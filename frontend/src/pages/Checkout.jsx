@@ -17,12 +17,37 @@ export default function Checkout() {
   const [editId, setEditId] = useState(null);
   const [pay, setPay] = useState("COD");
   const [placing, setPlacing] = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [upiApp, setUpiApp] = useState("GPay");
+  const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
+  const [walletBalance, setWalletBalance] = useState(() => {
+    try {
+      const raw = localStorage.getItem("purpyWallet");
+      if (!raw) return 1250;
+      const w = JSON.parse(raw);
+      if (w && typeof w === "object") return Number(w.balance) || 1250;
+      return Number(raw) || 1250;
+    } catch (e) { return 1250; }
+  });
 
   const [form, setForm] = useState({ name: "", phone: "", house: "", street: "", landmark: "", city: "Kakinada", pincode: "", type: "Home" });
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
   const saveAddresses = (list) => { setAddresses(list); localStorage.setItem("purpyAddresses", JSON.stringify(list)); };
   const startAdd = () => { setForm({ name: "", phone: "", house: "", street: "", landmark: "", city: "Kakinada", pincode: "", type: "Home" }); setEditId(null); setShowForm(true); };
   const startEdit = (a) => { setForm({ ...a }); setEditId(a.id); setShowForm(true); };
+
+  // ✅ LOGIN CHECK HELPER - Login / Signup Aindo Ledo Chudataniki
+  const getUser = () => {
+    try {
+      const u1 = JSON.parse(localStorage.getItem("purpyUser") || "null");
+      if (u1) return u1;
+      const u2 = JSON.parse(localStorage.getItem("purpyCurrentUser") || "null");
+      if (u2) return u2;
+      if (localStorage.getItem("purpyLoggedIn") === "true") return { name: "User" };
+    } catch (e) {}
+    return null;
+  };
+  const isLoggedIn = !!getUser();
 
   const saveAddress = () => {
     if (!form.name.trim()) return alert("Name - Ivvu Srija!");
@@ -56,18 +81,96 @@ export default function Checkout() {
 
   const placeOrder = () => {
     if (placing) return;
+
+    // ✅ 1. LOGIN ALERT - Signup / Login Lekapothe Order Avvadhu
+    if (!getUser()) {
+      alert("⚠️ Mundu Login / Signup Cheyyi Srija! Login Lekunda Order Cheyyalevu.");
+      window.location.href = "/?view=login";
+      return;
+    }
+
     if (cart.length === 0) return alert("Cart Empty!");
     const addr = addresses.find(a => a.id === selectedId);
     if (!addr) return alert("Address - Select - Chey - Leda - Add - Chey!");
+
+    let payDetail = "";
+    if (pay === "UPI") {
+      if (!upiId.includes("@") || upiId.length < 5) return alert("Correct UPI ID Ivvu! Eg: srija@okaxis");
+      payDetail = `${upiApp} - ${upiId}`;
+    }
+    if (pay === "Card") {
+      if (card.number.replace(/\s/g, "").length !== 16) return alert("Correct 16 Digit Card Number Ivvu!");
+      if (!card.name.trim()) return alert("Card Meedha Name Ivvu!");
+      if (card.expiry.length < 5) return alert("Expiry Ivvu! Eg: 12/28");
+      if (card.cvv.length !== 3) return alert("Correct 3 Digit CVV Ivvu!");
+      payDetail = "Card **** " + card.number.slice(-4);
+    }
+    if (pay === "Wallet") {
+      if (walletBalance < total) return alert(`Wallet Lo Money Thakkuva! Balance ₹${walletBalance}, Total ₹${total}. COD / UPI Select Chey!`);
+      payDetail = `Wallet Paid - Balance ₹${walletBalance - total} Migilindhi`;
+    }
+    if (pay === "COD") payDetail = "Pay Cash on Delivery";
+
+    // ✅ 2. ORDER PLACE CHESE MUNDHU CONFIRM ALERT
+    const confirmMsg =
+      `Order Confirm Cheyala Srija? 🤔\n\n` +
+      `🛒 Items: ${totalItems}\n` +
+      `💰 Total: ₹${total} (Delivery: ${delivery === 0 ? "FREE" : "₹" + delivery})\n` +
+      `💳 Payment: ${pay} - ${payDetail}\n` +
+      `📍 Address: ${addr.name}, ${addr.house}, ${addr.street}, ${addr.city} - ${addr.pincode}\n\n` +
+      `OK Kotte - Order Place Avthundhi ✅\nCancel Kotte - Order Avvadhu ❌`;
+    if (!confirm(confirmMsg)) return;
+
     setPlacing(true);
+
+    if (pay === "Wallet") {
+      const newBalance = walletBalance - total;
+      setWalletBalance(newBalance);
+      try {
+        const raw = localStorage.getItem("purpyWallet");
+        const old = raw ? JSON.parse(raw) : {};
+        const coins = old && typeof old === "object" ? (Number(old.coins) || 125) : 125;
+        localStorage.setItem("purpyWallet", JSON.stringify({ balance: newBalance, coins }));
+      } catch (e) {
+        localStorage.setItem("purpyWallet", JSON.stringify({ balance: newBalance, coins: 125 }));
+      }
+    }
+
     const orders = JSON.parse(localStorage.getItem("purpyOrders") || "[]");
-    const newOrder = { id: Date.now(), items: cart, total, itemsTotal, delivery, totalItems, address: addr, pay, date: new Date().toLocaleString("en-IN"), status: "Placed" };
+    const user = getUser();
+    const newOrder = {
+      id: Date.now(),
+      items: cart,
+      total, itemsTotal, delivery, totalItems,
+      address: addr,
+      pay,
+      payDetail,
+      paymentStatus: pay === "COD" ? "Pending - Pay on Delivery" : "Paid ✅",
+      date: new Date().toLocaleString("en-IN"),
+      status: "Placed",
+      userName: user?.name || user?.phone || "",
+      userPhone: user?.phone || ""
+    };
     localStorage.setItem("purpyOrders", JSON.stringify([newOrder, ...orders]));
     localStorage.removeItem("purpyCart");
-    window.location.href = "/?view=orders&success=1";
+    setTimeout(() => {
+      window.location.href = "/?view=orders&success=1";
+    }, 600);
   };
 
   const selected = addresses.find(a => a.id === selectedId);
+
+  // ✅ LOGIN LEKAPOTHE - Checkout Kanipinchadhu - Login Page Chupisthundhi
+  if (!isLoggedIn) return (
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+      <div style={{ fontSize: 50 }}>🔒</div>
+      <h2>Login Required!</h2>
+      <p style={{ color: "#666", fontSize: 13 }}>Order Cheyyalante Mundu Login / Signup Cheyyali Srija.</p>
+      <button onClick={() => window.location.href = "/?view=login"} style={{ padding: "12px 24px", background: "#16a34a", color: "white", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: 800, marginRight: 8 }}>Login / Signup</button>
+      <button onClick={() => window.location.href = "/?view=home"} style={{ padding: "12px 24px", background: "#111", color: "white", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: 800 }}>Back to Home</button>
+    </div>
+  );
+
   if (cart.length === 0) return (
     <div style={{ padding: 40, textAlign: "center" }}><div style={{ fontSize: 50 }}>🛒</div><h2>Cart Empty!</h2><button onClick={() => window.location.href = "/?view=home"} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 20, cursor: "pointer" }}>Shop Now</button></div>
   );
@@ -135,14 +238,59 @@ export default function Checkout() {
           <b>Deliver To: ✅ {selected.name} - {selected.type}</b><br />{selected.house}, {selected.street}, {selected.city} - {selected.pincode} • 📞 {selected.phone}
         </div>
       )}
+
       <h3 style={{ margin: "20px 0 10px" }}>💳 Payment</h3>
-      <div style={{ display: "flex", gap: 8 }}>
-        {["COD", "UPI", "Card"].map(m => (
-          <button key={m} onClick={() => setPay(m)} style={{ flex: 1, padding: 12, borderRadius: 12, border: pay === m ? "2px solid #16a34a" : "1px solid #ddd", background: pay === m ? "#f0fdf4" : "white", cursor: "pointer", fontWeight: 800 }}>{m === "COD" ? "💵 COD" : m === "UPI" ? "📱 UPI" : "💳 Card"}</button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {["COD", "UPI", "Card", "Wallet"].map(m => (
+          <button key={m} onClick={() => setPay(m)} style={{ flex: 1, minWidth: 70, padding: 12, borderRadius: 12, border: pay === m ? "2px solid #16a34a" : "1px solid #ddd", background: pay === m ? "#f0fdf4" : "white", cursor: "pointer", fontWeight: 800 }}>{m === "COD" ? "💵 COD" : m === "UPI" ? "📱 UPI" : m === "Card" ? "💳 Card" : "👛 Wallet"}</button>
         ))}
       </div>
+
+      {pay === "COD" && (
+        <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 12, padding: 12, marginTop: 10, fontSize: 13 }}>
+          💵 <b>Cash on Delivery</b> - Delivery Boy Ki ₹{total} Cash Ivvu. Extra Charge Ledhu.
+        </div>
+      )}
+
+      {pay === "UPI" && (
+        <div style={{ background: "white", border: "1px solid #eee", borderRadius: 12, padding: 12, marginTop: 10 }}>
+          <b style={{ fontSize: 13 }}>📱 UPI ID Ivvu</b>
+          <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Eg: srija@okaxis / 98564@okhdfc" value={upiId} onChange={e => setUpiId(e.target.value)} />
+          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+            {["GPay", "PhonePe", "Paytm"].map(app => (
+              <button key={app} type="button" onClick={() => setUpiApp(app)} style={{ background: upiApp === app ? "#16a34a" : "#f0fdf4", color: upiApp === app ? "white" : "#111", border: upiApp === app ? "2px solid #16a34a" : "1px solid #bbf7d0", padding: "7px 14px", borderRadius: 20, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                {app === "GPay" ? "📱 GPay" : app === "PhonePe" ? "💜 PhonePe" : "💙 Paytm"} {upiApp === app ? "✓" : ""}
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "#666", margin: "8px 0 0" }}>Selected: <b style={{ color: "#16a34a" }}>{upiApp}</b> - {upiApp} App Lo Pay Chesthavu • Demo App Kabatti Real Money Cut Avvadhu.</p>
+        </div>
+      )}
+
+      {pay === "Card" && (
+        <div style={{ background: "white", border: "1px solid #eee", borderRadius: 12, padding: 12, marginTop: 10 }}>
+          <b style={{ fontSize: 13 }}>💳 Card Details</b>
+          <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Card Number - 16 Digits" value={card.number} onChange={e => setCard({ ...card, number: e.target.value.replace(/\D/g, "").slice(0, 16) })} maxLength={16} />
+          <input style={{ ...inputStyle, marginTop: 8 }} placeholder="Name on Card" value={card.name} onChange={e => setCard({ ...card, name: e.target.value })} />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <input style={inputStyle} placeholder="MM/YY - 12/28" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value.slice(0, 5) })} />
+            <input style={inputStyle} placeholder="CVV - 123" value={card.cvv} onChange={e => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })} maxLength={3} />
+          </div>
+          <p style={{ fontSize: 11, color: "#666", margin: "8px 0 0" }}>🔒 Demo Only - Real Card Details Ivvoddu. 4242 4242 4242 4242 Test Card Vadu.</p>
+        </div>
+      )}
+
+      {pay === "Wallet" && (
+        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: 12, marginTop: 10, fontSize: 13 }}>
+          👛 <b>Wallet Balance: ₹{walletBalance}</b><br />
+          Total: ₹{total} - Pay Chesaka Migilindhi: <b style={{ color: walletBalance >= total ? "#16a34a" : "#dc2626" }}>₹{walletBalance - total}</b>
+          {walletBalance < total && <div style={{ color: "#dc2626", marginTop: 6, fontWeight: 700 }}>⚠️ Wallet Lo Money Saripodhu! COD / UPI Vaduko.</div>}
+          {walletBalance >= total && <div style={{ color: "#16a34a", marginTop: 6 }}>✅ Wallet Nunchi Pay Avthundhi</div>}
+        </div>
+      )}
+
       <button onClick={placeOrder} disabled={!selected || placing} style={{ width: "100%", padding: 15, background: (!selected || placing) ? "#ccc" : "#16a34a", color: "white", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: (!selected || placing) ? "not-allowed" : "pointer", marginTop: 16 }}>
-        {placing ? "Placing Order... ⏳" : selected ? `Place Order - ₹${total} ✅` : "Address Select Chey - Place Order Kosam!"}
+        {placing ? "Placing Order... ⏳" : selected ? `Place Order - ₹${total} - ${pay} ✅` : "Address Select Chey - Place Order Kosam!"}
       </button>
       <p style={{ textAlign: "center", fontSize: 11, color: "#999", marginTop: 10 }}>🚚 Free Delivery ₹499+ • 🛡️ 7 Days Return • 🔒 Secure • 📍 Kakinada</p>
     </div>

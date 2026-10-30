@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { purpyGo } from "../App.jsx";
 
 const ALL_DATA = {
   grocery: {
@@ -85,7 +86,7 @@ const ALL_DATA = {
       { id:"headphones", label:"Headphones", emoji:"🎧", img:"https://cdn.mos.cms.futurecdn.net/HMCWShKerkfeNQmYYhE3p7-1920-80.jpg" },
       { id:"tv", label:"TV", emoji:"📺", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSHtxbD0b1OlI2xwLXFWy3VaHZFRn5xiNh7hh--VnDUMJGdZKhSAaHf3U3_&s=10" },
       { id:"fridge", label:"Fridge", emoji:"❄️", img:"https://5.imimg.com/data5/NJ/IH/BQ/SELLER-102166082/double-door-refrigerator-500x500.jpg" },
-      { id:"keyboard", label:"Keyboards", emoji:"⌨️", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqnFmP6g83xiH-U9HOlhkZNAhAkxepKs0RIfsGohW2_gmb9TMqpRscnxo&s=10" },
+      { id:"keyboards", label:"Keyboards", emoji:"⌨️", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqnFmP6g83xiH-U9HOlhkZNAhAkxepKs0RIfsGohW2_gmb9TMqpRscnxo&s=10" },
       { id:"mouse", label:"Mouse", emoji:"🖱️", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ9Q6XdzeooanSk1tLjOKORUJX6BkAojk6-SyEvtcF2IvUvdBJXn_Zwma0K&s=10" },
     ],
   },
@@ -127,7 +128,7 @@ const ALL_DATA = {
       { id:"jewellery", label:"Jewellery", emoji:"💍", img:"https://png.pngtree.com/thumb_back/fh260/background/20241101/pngtree-indian-kundon-jewellery-image_16489015.jpg" },
       { id:"footwear", label:"Footwear", emoji:"👠", img:"https://thumbs.dreamstime.com/b/indian-footwear-2363258.jpg" },
       { id:"caps", label:"Caps", emoji:"🧢", img:"https://images.unsplash.com/photo-1777455163879-92852416eb36?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D" },
-      { id:"scarves", label:"Scarves", emoji:"🧣", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTENDMUVNKLlCJj8a_pb8iCXBRU74hDmagiAo4NVrUf5neWFWfsodL21pve&s=10" },
+      { id:"scarfs", label:"Scarves", emoji:"🧣", img:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTENDMUVNKLlCJj8a_pb8iCXBRU74hDmagiAo4NVrUf5neWFWfsodL21pve&s=10" },
       { id:"gloves", label:"Gloves", emoji:"🧤", img:"https://assets.myntassets.com/w_200,q_50,,dpr_3,fl_progressive,f_webp/assets/images/2026/OCTOBER/13/a95c2161457f4bea9b3065c2bc9696c3.jpg" },
       { id:"ties", label:"Ties", emoji:"👔", img:"https://images.unsplash.com/photo-1591729652476-e7f587578d9c?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D" },
       { id:"socks", label:"Socks", emoji:"🧦", img:"https://media.istockphoto.com/id/1069111848/photo/a-pile-of-multi-colored-socks-view-from-above.jpg?s=612x612&w=0&k=20&c=l3sOQUwT7e_Dg5rweke0RTwWn5SJzMW8aVcknQ2ToLM=" },
@@ -158,37 +159,39 @@ const ALL_DATA = {
 };
 
 const ORDER = ["home","grocery","clothes","electronics","beauty","fashion","sports","furniture"];
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80&auto=format&fit=crop";
+const ICON_MAP = { "keyboard": "keyboards", "keyboards": "keyboards", "scarves": "scarfs", "scarfs": "scarfs", "scarf": "scarfs", "photo-frames": "photo-frames", "hair-clips": "hair-clips" };
+const mapIcon = (id) => ICON_MAP[id] || id;
 
 export default function CategoryPage(){
   const params = new URLSearchParams(window.location.search);
   const cat = params.get("cat") || "grocery";
   const catData = ALL_DATA[cat] || ALL_DATA["grocery"];
   const [slide, setSlide] = useState(0);
-  useEffect(()=>{ const t=setInterval(()=>setSlide(s=>(s+1)%catData.carousel.length), 3000); return ()=>clearInterval(t); }, [catData.carousel.length]);
-  const goHome = () => window.location.href = "/?view=home";
-  const goCat = (id) => id==="home" ? goHome() : window.location.href = `/?view=category&cat=${id}`;
-  const goItems = (iconId) => window.location.href = `/?view=items&cat=${cat}&icon=${iconId}`;
+  useEffect(()=>{ setSlide(0); }, [cat]);
+  useEffect(()=>{ const t=setInterval(()=>setSlide(s=>(s+1)%catData.carousel.length), 3500); return ()=>clearInterval(t); }, [catData.carousel.length, cat]);
+  const goHome = () => purpyGo(`/?view=home`);
+  const goCat = (id) => id==="home" ? goHome() : purpyGo(`/?view=category&cat=${id}`);
+  const goItems = (iconId) => purpyGo(`/?view=items&cat=${cat}&icon=${encodeURIComponent(mapIcon(iconId))}`);
   return (
     <div style={{maxWidth:"1200px", margin:"0 auto", background:"white"}}>
       <div style={{display:"flex", gap:"8px", overflowX:"auto", padding:"10px 12px", background:"#f8faf8", position:"sticky", top:0, zIndex:10, borderBottom:"1px solid #e5e7eb"}}>
         {ORDER.map(c=><button key={c} onClick={()=>goCat(c)} style={{flex:"0 0 auto", padding:"8px 16px", borderRadius:"20px", border:"1px solid #ddd", fontSize:"12px", fontWeight:700, cursor:"pointer", textTransform:"capitalize", background: c===cat ? "#2e7d32" : "white", color: c===cat ? "white" : "#333"}}>{c}</button>)}
       </div>
-      {/* ✅ CAROUSEL HEIGHT PEDDAGA - Mundhu 360px - Ippudu 520px */}
       <div style={{position:"relative", width:"100%", height:"clamp(340px, 58vw, 520px)", overflow:"hidden", background:"#000"}}>
-        {catData.carousel.map((b,i)=><div key={i} style={{position:"absolute", inset:0, opacity:i===slide?1:0, transition:"opacity 0.7s"}}><img src={b.img} style={{width:"100%", height:"100%", objectFit:"cover"}} alt="" /><div style={{position:"absolute", bottom:0, left:0, right:0, background:"linear-gradient(to top, rgba(0,0,0,0.7), transparent)", padding:"20px"}}><b style={{color:"white", background:"#2e7d32", padding:"12px 22px", borderRadius:"24px", fontSize:"18px", boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>{b.text}</b></div></div>)}
+        {catData.carousel.map((b,i)=><div key={i} style={{position:"absolute", inset:0, opacity:i===slide?1:0, transition:"opacity 0.7s", pointerEvents: i===slide ? "auto" : "none"}}><img src={b.img} onError={(e)=>{e.currentTarget.src=FALLBACK_IMG;}} style={{width:"100%", height:"100%", objectFit:"cover"}} alt="" /><div style={{position:"absolute", bottom:0, left:0, right:0, background:"linear-gradient(to top, rgba(0,0,0,0.7), transparent)", padding:"20px"}}><b style={{color:"white", background:"#2e7d32", padding:"12px 22px", borderRadius:"24px", fontSize:"18px", boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>{b.text}</b></div></div>)}
         <div style={{position:"absolute", bottom:"18px", left:"50%", transform:"translateX(-50%)", display:"flex", gap:"8px"}}>
           {catData.carousel.map((_,i)=><div key={i} onClick={()=>setSlide(i)} style={{width:i===slide?"22px":"8px", height:"8px", borderRadius:"20px", background:i===slide?"white":"rgba(255,255,255,0.5)", cursor:"pointer", transition:"all 0.3s"}}></div>)}
         </div>
       </div>
       <div style={{background:"linear-gradient(to bottom, #ffffff, #f9fafb)", padding:"22px 12px"}}>
         <h3 style={{margin:"0 0 18px 0", fontSize:"16px", fontWeight:900, letterSpacing:"0.5px", color:"#111"}}>SHOP BY {cat.toUpperCase()} - {catData.icons.length} BEAUTIFUL ICONS</h3>
-        {/* ✅ ICONS PEDDAGA - Mundhu 90px - Ippudu 132px */}
         <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(132px, 1fr))", gap:"20px 14px"}}>
           {catData.icons.map(icon=>(
             <div key={icon.id} onClick={()=>goItems(icon.id)} style={{cursor:"pointer", textAlign:"center", transition:"transform 0.2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.05)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
               <div style={{width:"100%", aspectRatio:"1", borderRadius:"26px", overflow:"hidden", background:"linear-gradient(135deg, #e8f5e9, #ffffff)", border:"3px solid transparent", backgroundImage:"linear-gradient(white, white), linear-gradient(135deg, #2e7d32, #81c784)", backgroundOrigin:"border-box", backgroundClip:"content-box, border-box", boxShadow:"0 8px 20px rgba(46,125,50,0.15)", padding:"4px"}}>
                 <div style={{width:"100%", height:"100%", borderRadius:"20px", overflow:"hidden", background:"white"}}>
-                  <img src={icon.img.includes("REPLACE") ? `https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80&auto=format&fit=crop` : icon.img} style={{width:"100%", height:"100%", objectFit:"cover"}} alt={icon.label} />
+                  <img src={icon.img.includes("REPLACE") ? FALLBACK_IMG : icon.img} onError={(e)=>{e.currentTarget.src=FALLBACK_IMG;}} style={{width:"100%", height:"100%", objectFit:"cover"}} alt={icon.label} />
                 </div>
               </div>
               <p style={{margin:"10px 0 0 0", fontSize:"13px", fontWeight:800, background:"linear-gradient(135deg, #2e7d32, #388e3c)", color:"white", padding:"7px 10px", borderRadius:"20px", boxShadow:"0 2px 8px rgba(46,125,50,0.2)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{icon.emoji} {icon.label}</p>

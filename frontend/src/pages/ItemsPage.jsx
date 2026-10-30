@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLang } from "../context/LanguageContext.jsx";
+import { purpyGo } from "../App.jsx";
+
 
 // ============ 1. CAROUSEL - ADD CHESINDHI - IDHI PAINA PETTU ============
 // CAT -> ICON -> 5 IMAGES - Okati marchithe - Ade icon ke maruthundi
@@ -753,117 +756,282 @@ sports:{
 };
 
 
-// ⭐ KINDA - TOUCH CHEYAKU - PRICE + PACK AUTOMATIC ⭐
 
 
+// ============ PAINA - NEEVI ALAAGE UNCHU ============
+// export const CAROUSEL = { ...neevi... };
+// export const ALL_IMAGES = { ...neevi... };
+// export const NAMES_BY_INDEX = { ...neevi... };
+// ⚠️ Kindha unna OLD block DELETE: export const ALL_IMAGES = {}; export const NAMES_BY_INDEX = {}; Object.keys(ICON_LIST)... picsum...
 
-import { useLang } from "../context/LanguageContext.jsx";
+// ============ FIX 1 - KEYS NORMALIZE ============
+function pretty(s) { return String(s || "").split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "); }
+function normKey(s) { return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
 
-// 👆 Paina 2 lines - Nee file lo starting lo undali.
-
-// ALL_IMAGES, NAMES_BY_INDEX, CAROUSEL - Ikkada nee original data untundhi - Daniki mundhu `export` pettu
-// export const ALL_IMAGES = { ... nee full data ... };
-// export const NAMES_BY_INDEX = { ... nee full data ... };
-// export const CAROUSEL = { ... nee full data ... };
-
-function hashFromImage(img) {
-  let h = 0;
-  for (let k = 0; k < img.length; k++) h = (h * 31 + img.charCodeAt(k)) % 100000;
-  return h;
-}
-
-function priceFromImage(img, cat) {
-  const h = hashFromImage(img);
-  if (cat === "grocery") return 19 + (h % 18) * 10 + 1;
-  if (cat === "clothes") return 299 + (h % 12) * 100 + 9;
-  if (cat === "beauty") return 99 + (h % 16) * 50 + 9;
-  if (cat === "electronics") return 1999 + (h % 18) * 500 + 99;
-  if (cat === "furniture") return 1999 + (h % 15) * 600 + 99;
-  if (cat === "fashion") return 199 + (h % 15) * 100 + 9;
-  if (cat === "sports") return 299 + (h % 15) * 200 + 9;
-  return 299 + (h % 18) * 100 + 9;
-}
-
-// ✅ FIX 1 - Key Normalise - Capital / Small / - / _ - Anni - Same ga - Chusthundhi
-function normKey(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-// ✅ FIX 2 - Alias Map - Nuvvu - E peru tho - Click chesina - Correct Key - Dorukuthundhi
 const ALIAS = {
-  "watches": "watchesfashion",
-  "watch": "watchesfashion",
-  "watchesfashion": "watchesfashion",
-  "photoframes": "photoframes",
-  "photoframe": "photoframes",
-  "photo-frames": "photoframes",
-  "toys": "toys",
-  "toy": "toys",
-  "scarfs": "scarfs",
-  "scarf": "scarfs",
-  "scarves": "scarfs",
-  "bags": "bags",
-  "bag": "bags",
-  "hairclips": "hairclips",
-  "hair-clips": "hairclips",
-  "Combs": "Combs",
-  "Combs": "Combs"
+  "photoframes": "photoframes", "photoframe": "photoframes",
+  "toys": "toys", "toy": "toys",
+  "scarfs": "scarfs", "scarf": "scarfs", "scarves": "scarfs",
+  "bags": "bags", "bag": "bags",
+  "hairclips": "hairclips", "hairclip": "hairclips",
+  "fridge": "fridge", "keyboards": "keyboards", "keyboard": "keyboards",
+  "mouse": "mouse", "watches": "watches",
 };
+
+// ✅ ALL_IMAGES lo em key unna - Fridge / fridge / Photo-Frames - anni okela chesesthundhi
+// Idi lekunte click chesina icon ki image dorakadu
+function normalizeObj(obj) {
+  if (!obj) return {};
+  const out = {};
+  Object.keys(obj).forEach((k) => { out[normKey(k)] = obj[k]; });
+  return out;
+}
+const ALL_IMAGES_N = {};
+Object.keys(ALL_IMAGES || {}).forEach((cat) => {
+  const v = ALL_IMAGES[cat];
+  // ALL_IMAGES[grocery] = { dairy: [...] } ayithe - alaage
+  // ALL_IMAGES[dairy] = [...] ayithe - direct array ayithe - daanini kuda handle chesthundhi
+  if (Array.isArray(v)) { ALL_IMAGES_N[normKey(cat)] = v; }
+  else { ALL_IMAGES_N[normKey(cat)] = normalizeObj(v); }
+});
+const NAMES_N = normalizeObj(NAMES_BY_INDEX || {});
+const CAROUSEL_N = {};
+Object.keys(CAROUSEL || {}).forEach((cat) => { CAROUSEL_N[normKey(cat)] = normalizeObj(CAROUSEL[cat]); });
 
 function findKey(obj, icon) {
   if (!obj) return null;
-  const keys = Object.keys(obj);
-  // 1. Direct - Exact match
   if (obj[icon]) return icon;
-  // 2. Normalised match - photo-frames == Photo-Frames
   const want = ALIAS[normKey(icon)] || normKey(icon);
-  for (const k of keys) {
-    if (normKey(k) === want) return k;
-    if (ALIAS[normKey(k)] === want) return k;
-  }
-  // 3. Partial - watches lo - watches-fashion dorukuthundhi
-  for (const k of keys) {
-    if (normKey(k).includes(want) || want.includes(normKey(k))) return k;
-  }
-  return null; // ❌ MUNDU LAAGA - First Key ki - Vellakudadhu - Null ivvu
+  for (const k of Object.keys(obj)) { if (normKey(k) === want) return k; }
+  for (const k of Object.keys(obj)) { if ((ALIAS[normKey(k)] || normKey(k)) === want) return k; }
+  return null; // ❌ includes() TEES ESA - Ade Tomato Bug
 }
 
-function getNameByIndex(icon, index) {
-  // ✅ FIX 3 - Names kuda - Same - Normalised ga - Chudu
-  let list = NAMES_BY_INDEX[icon];
-  if (!list) {
-    const realKey = findKey(NAMES_BY_INDEX, icon);
-    if (realKey) list = NAMES_BY_INDEX[realKey];
-  }
-  list = list || [];
+function getNameByIndex(cat, icon, index) {
+  const realKey = findKey(NAMES_N, icon) || normKey(icon);
+  const list = NAMES_N[realKey] || [];
   const myName = list[index];
-  if (myName && myName.trim() !== "") return myName;
-  const pretty = icon.charAt(0).toUpperCase() + icon.slice(1);
-  return pretty + " - Product " + (index + 1);
+  if (myName && String(myName).trim() !== "") return myName;
+  return `${pretty(icon)} ${index + 1}`;
+}
+
+// ============ FIX 2 - PRICE - QUANTITY BASE + NAME BASE ============
+// "Amul-Milk-3-Liters" -> 3 x Milk Rate
+// "Brinjal 1 Kg" -> 1 x Brinjal Rate
+// "Black Pepper 200gm" -> 0.2 x Pepper Rate
+// Quantity leni daniki -> Name base fixed price
+
+function parseQty(name) {
+  // 3-Liters, 3 Liters, 1000ml, 500gm, 1 Kg, 2 Kg, 50gms - anni pattukuntundhi
+  const m = String(name || "").toLowerCase().match(/(\d+(?:\.\d+)?)\s*[- ]?\s*(kgs?|gms?|grams?|liters?|litres?|ltrs?|ltr|ml|l)\b/);
+  if (!m) return null;
+  const val = parseFloat(m[1]);
+  const unit = m[2];
+  if (unit.startsWith("kg")) return { qty: val, base: "kg" };
+  if (unit.startsWith("gm") || unit.startsWith("gram")) return { qty: val / 1000, base: "kg" }; // gm -> kg
+  if (unit.startsWith("ml")) return { qty: val / 1000, base: "liter" }; // ml -> liter
+  if (unit.startsWith("l")) return { qty: val, base: "liter" };
+  return null;
+}
+
+// Per 1 Kg / Per 1 Liter Rate - Nee names batti
+function ratePerUnit(name, cat) {
+  const n = " " + String(name || "").toLowerCase().replace(/-/g, " ") + " ";
+  if (cat === "grocery") {
+    // DAIRY - per Liter
+    if (n.includes(" milk ")) return { rate: 55, base: "liter" };
+    // VEGGIES - per Kg
+    if (n.includes(" brinjal ")) return { rate: 40, base: "kg" };
+    if (n.includes(" lady finger ") || n.includes(" okra ")) return { rate: 45, base: "kg" };
+    if (n.includes(" potato ")) return { rate: 30, base: "kg" };
+    if (n.includes(" taro ")) return { rate: 60, base: "kg" };
+    if (n.includes(" gourd ")) return { rate: 35, base: "kg" };
+    if (n.includes(" onion ")) return { rate: 35, base: "kg" };
+    if (n.includes(" beans ")) return { rate: 60, base: "kg" };
+    if (n.includes(" tomato ") || n.includes(" tomatoes ")) return { rate: 28, base: "kg" };
+    if (n.includes(" cucumber ")) return { rate: 30, base: "kg" };
+    if (n.includes(" capsicum ")) return { rate: 70, base: "kg" };
+    if (n.includes(" cabbage ")) return { rate: 30, base: "kg" };
+    if (n.includes(" cauliflower ")) return { rate: 40, base: "kg" };
+    if (n.includes(" peas ")) return { rate: 90, base: "kg" };
+    if (n.includes(" bitter gourd ")) return { rate: 50, base: "kg" };
+    if (n.includes(" pumpkin ")) return { rate: 30, base: "kg" };
+    if (n.includes(" carrot ")) return { rate: 45, base: "kg" };
+    if (n.includes(" beetroot ")) return { rate: 40, base: "kg" };
+    // FRUITS - per Kg
+    if (n.includes(" apple ") || n.includes(" apples ")) return { rate: 180, base: "kg" };
+    if (n.includes(" banana ") || n.includes(" bananas ")) return { rate: 40, base: "kg" };
+    if (n.includes(" grape ")) return { rate: 120, base: "kg" };
+    if (n.includes(" sweet lime ") || n.includes(" orange ")) return { rate: 80, base: "kg" };
+    if (n.includes(" kiwi ")) return { rate: 350, base: "kg" };
+    if (n.includes(" pineapple ")) return { rate: 60, base: "kg" };
+    if (n.includes(" papaya ")) return { rate: 40, base: "kg" };
+    if (n.includes(" strawberr ")) return { rate: 400, base: "kg" };
+    if (n.includes(" pomegranate ")) return { rate: 180, base: "kg" };
+    if (n.includes(" custard apple ")) return { rate: 120, base: "kg" };
+    if (n.includes(" watermelon ") || n.includes(" muskmelon ")) return { rate: 35, base: "kg" };
+    if (n.includes(" jackfruit ")) return { rate: 50, base: "kg" };
+    if (n.includes(" dragon")) return { rate: 200, base: "kg" };
+    if (n.includes(" plum ") || n.includes(" pear ")) return { rate: 150, base: "kg" };
+    if (n.includes(" mango ") || n.includes(" mangoes ")) return { rate: 100, base: "kg" };
+    if (n.includes(" blueberr ")) return { rate: 600, base: "kg" };
+    // GRAINS / DAL - per Kg
+    if (n.includes(" rice ")) return { rate: 85, base: "kg" };
+    if (n.includes(" wheat ")) return { rate: 55, base: "kg" };
+    if (n.includes(" millet ")) return { rate: 120, base: "kg" };
+    if (n.includes(" chickpea ") || n.includes(" chana ") || n.includes(" gram ")) return { rate: 110, base: "kg" };
+    if (n.includes(" dal ") || n.includes(" lentil ")) return { rate: 160, base: "kg" };
+    if (n.includes(" barley ")) return { rate: 80, base: "kg" };
+    if (n.includes(" urad ")) return { rate: 150, base: "kg" };
+    if (n.includes(" moong ")) return { rate: 140, base: "kg" };
+    if (n.includes(" flax ") || n.includes(" sesame ") || n.includes(" coriander seed")) return { rate: 250, base: "kg" };
+    // OIL - per Kg / Liter
+    if (n.includes(" oil ")) return { rate: 155, base: "liter" };
+    // MASALA - per Kg (gm ni kg lo ki marchi calculate chesthundhi)
+    if (n.includes(" black pepper ")) return { rate: 1200, base: "kg" };
+    if (n.includes(" nutmeg ")) return { rate: 2500, base: "kg" };
+    if (n.includes(" turmeric ")) return { rate: 400, base: "kg" };
+    if (n.includes(" coriander ")) return { rate: 350, base: "kg" };
+    if (n.includes(" chilli ")) return { rate: 450, base: "kg" };
+    if (n.includes(" cumin ")) return { rate: 900, base: "kg" };
+    if (n.includes(" salt ")) return { rate: 25, base: "kg" };
+    if (n.includes(" cardamom ")) return { rate: 3500, base: "kg" };
+    if (n.includes(" cinnamon ")) return { rate: 900, base: "kg" };
+    if (n.includes(" clove ")) return { rate: 1500, base: "kg" };
+    if (n.includes(" mace ") || n.includes(" star anise ") || n.includes(" bay leaf")) return { rate: 1800, base: "kg" };
+    if (n.includes(" fennel ") || n.includes(" mustard seed") || n.includes(" fenugreek ")) return { rate: 300, base: "kg" };
+    if (n.includes(" asafoetida ")) return { rate: 2000, base: "kg" };
+    if (n.includes(" saffron ")) return { rate: 25000, base: "kg" };
+  }
+  return null;
+}
+
+function priceFromName(name, cat) {
+  const n = " " + String(name || "").toLowerCase().replace(/-/g, " ") + " ";
+  // 1. QUANTITY UNTE - Quantity x Rate
+  const q = parseQty(name);
+  const r = ratePerUnit(name, cat);
+  if (q && r && q.base === r.base) {
+    // Ex: Milk 3 Liters = 3 x 55 = 165, Pepper 200gm = 0.2 x 1200 = 240
+    return Math.max(10, Math.round(q.qty * r.rate));
+  }
+  if (q && cat === "grocery") {
+    // Rate teliyani grocery - default 50 per Kg/Liter
+    return Math.max(10, Math.round(q.qty * 50));
+  }
+  // 2. QUANTITY LEKAPOTHE - NAME BASE FIXED PRICE
+  if (cat === "grocery") {
+    if (n.includes(" thums ") || n.includes(" pepsi ") || n.includes(" coca ") || n.includes(" sprite ") || n.includes(" fanta ") || n.includes(" maaza ") || n.includes(" sting ") || n.includes(" redbull ")) return 40;
+    if (n.includes(" biscuit ") || n.includes(" parle ") || n.includes(" oreo ") || n.includes(" bourbon ") || n.includes(" good day ")) return 30;
+    if (n.includes(" icecream ") || n.includes(" ice cream ") || n.includes(" cornetto ") || n.includes(" magnum ")) return 99;
+    if (n.includes(" bread ")) return 40;
+    if (n.includes(" chicken ")) return 220;
+    if (n.includes(" prawn ") || n.includes(" shrimp ") || n.includes(" salmon ") || n.includes(" tuna ")) return 350;
+    if (n.includes(" chocolate ") || n.includes(" dairy milk ") || n.includes(" kitkat ") || n.includes(" snickers ")) return 50;
+    if (n.includes(" lays ") || n.includes(" bingo ") || n.includes(" kurkure ") || n.includes(" mad angles ")) return 20;
+    if (n.includes(" oil ") && !q) return 155;
+    if (n.includes(" milk ") && !q) return 55;
+    return 49;
+  }
+  if (cat === "clothes") {
+    if (n.includes(" saree ")) return 899;
+    if (n.includes(" lehenga ")) return 1999;
+    if (n.includes(" kurta ") || n.includes(" kurti ")) return 699;
+    if (n.includes(" jeans ")) return 799;
+    if (n.includes(" shirt ")) return 599;
+    if (n.includes(" tshirt ") || n.includes(" t shirt ")) return 299;
+    if (n.includes(" jacket ") || n.includes(" hoodie ")) return 999;
+    if (n.includes(" frock ")) return 499;
+    if (n.includes(" top ")) return 399;
+    return 499;
+  }
+  if (cat === "beauty") {
+    if (n.includes(" lipstick ") || n.includes(" lip ")) return 299;
+    if (n.includes(" perfume ")) return 499;
+    if (n.includes(" face wash ") || n.includes(" facewash ")) return 199;
+    if (n.includes(" serum ")) return 349;
+    if (n.includes(" foundation ")) return 399;
+    if (n.includes(" eyeliner ")) return 199;
+    if (n.includes(" nail ")) return 149;
+    if (n.includes(" comb ")) return 99;
+    return 249;
+  }
+  if (cat === "electronics") {
+    if (n.includes(" iphone ") || n.includes(" pixel ")) return 49999;
+    if (n.includes(" samsung ") && n.includes(" fold ")) return 89999;
+    if (n.includes(" laptop ") || n.includes(" chromebook ")) return 35999;
+    if (n.includes(" watch ")) return 1999;
+    if (n.includes(" airpods ") || n.includes(" headphone ") || n.includes(" buds ") || n.includes(" earphone ")) return 1499;
+    if (n.includes(" tv ")) return 18999;
+    if (n.includes(" fridge ")) return 22999;
+    if (n.includes(" keyboard ")) return 1299;
+    if (n.includes(" mouse ")) return 799;
+    return 2499;
+  }
+  if (cat === "furniture") {
+    if (n.includes(" sofa ")) return 12999;
+    if (n.includes(" bed ") || n.includes(" crib ") || n.includes(" cot ")) return 15999;
+    if (n.includes(" wardrobe ")) return 11999;
+    if (n.includes(" dining ")) return 14999;
+    if (n.includes(" table ")) return 2999;
+    if (n.includes(" chair ")) return 1499;
+    if (n.includes(" mattress ")) return 5999;
+    if (n.includes(" swing ")) return 7999;
+    if (n.includes(" frame ")) return 499;
+    if (n.includes(" toy ")) return 399;
+    return 3999;
+  }
+  if (cat === "fashion") {
+    if (n.includes(" bag ")) return 699;
+    if (n.includes(" watch ")) return 1299;
+    if (n.includes(" sunglass ") || n.includes(" glasses ")) return 399;
+    if (n.includes(" jewellery ") || n.includes(" necklace ") || n.includes(" earring ") || n.includes(" bangle ")) return 999;
+    if (n.includes(" wallet ")) return 499;
+    if (n.includes(" belt ")) return 399;
+    if (n.includes(" footwear ") || n.includes(" slipper ") || n.includes(" heel ")) return 599;
+    if (n.includes(" cap ")) return 299;
+    if (n.includes(" scarf ")) return 299;
+    if (n.includes(" glove ")) return 249;
+    if (n.includes(" tie ")) return 299;
+    if (n.includes(" sock ")) return 149;
+    if (n.includes(" clip ")) return 149;
+    return 499;
+  }
+  if (cat === "sports") {
+    if (n.includes(" shoe ") || n.includes(" skate ")) return 1299;
+    if (n.includes(" cycle ") || n.includes(" bike ")) return 8999;
+    if (n.includes(" bat ")) return 799;
+    if (n.includes(" jersey ")) return 599;
+    if (n.includes(" gym ") || n.includes(" dumbell ") || n.includes(" kettle ")) return 899;
+    if (n.includes(" racket ")) return 699;
+    if (n.includes(" hockey ")) return 899;
+    if (n.includes(" football ") || n.includes(" basketball ") || n.includes(" ball ")) return 499;
+    return 599;
+  }
+  return 299;
 }
 
 function getItems(cat, icon) {
-  const c = ALL_IMAGES[cat] || ALL_IMAGES.grocery || {};
-  // ✅ FIX 4 - Ikkada - Main Fix - First Key ki - Vellakudadhu
+  const catKey = normKey(cat);
+  const c = ALL_IMAGES_N[catKey] || {};
+  // c array ayithe - direct
+  if (Array.isArray(c)) {
+    return c.map((img, i) => {
+      const name = getNameByIndex(cat, icon, i);
+      const price = priceFromName(name, catKey);
+      return { id: `${catKey}-${normKey(icon)}-${i}`, name, price, mrp: Math.round(price * 1.6), brand: "PURPY • " + pretty(icon), category: catKey, img, image: img, imageUrl: img };
+    });
+  }
   const realKey = findKey(c, icon);
-  const imgs = realKey ? c[realKey] : [];
+  if (!realKey) return [];
+  const imgs = (c[realKey] || []).filter((u) => u && !String(u).includes("REPLACE") && String(u).startsWith("http"));
   return imgs.map((img, i) => {
-    const price = priceFromImage(img, cat);
-    return {
-      id: `${cat}-${realKey || icon}-${i}`,
-      name: getNameByIndex(realKey || icon, i),
-      price: price,
-      mrp: price + 200 + ((img.length * 37) % 800),
-      brand: "PURPY • " + ((realKey || icon).charAt(0).toUpperCase() + (realKey || icon).slice(1)),
-      category: cat,
-      img: img,
-      image: img,
-      imageUrl: img,
-    };
+    const name = getNameByIndex(cat, realKey, i); // ✅ realKey tho name - ade click chesina dani name vasthundhi
+    const price = priceFromName(name, catKey);
+    return { id: `${catKey}-${realKey}-${i}`, name, price, mrp: Math.round(price * 1.6), brand: "PURPY • " + pretty(realKey), category: catKey, img, image: img, imageUrl: img };
   });
 }
-
-export { hashFromImage, priceFromImage, getNameByIndex, getItems };
+export function getItemsExport(cat, icon) { return getItems(cat, icon); }
 
 export default function ItemsPage() {
   const { t } = useLang();
@@ -871,36 +1039,34 @@ export default function ItemsPage() {
   const cat = p.get("cat") || "grocery";
   const icon = p.get("icon") || "dairy";
   const items = getItems(cat, icon);
-  const carousel = (CAROUSEL[cat] && CAROUSEL[cat][icon]) || [];
+  const realIconKey = findKey(CAROUSEL_N[normKey(cat)] || {}, icon) || icon;
+  const carousel = (CAROUSEL_N[normKey(cat)] && CAROUSEL_N[normKey(cat)][realIconKey]) || [];
   const [slide, setSlide] = useState(0);
   const [cart, setCart] = useState(JSON.parse(localStorage.getItem("purpyCart") || "[]"));
   const [wish, setWish] = useState(JSON.parse(localStorage.getItem("purpyWishlist") || "[]"));
+  useEffect(() => { try { localStorage.setItem("purpyLastItems", JSON.stringify(items)); } catch (e) {} }, [cat, icon]);
   useEffect(() => { setSlide(0); }, [cat, icon]);
-  useEffect(() => {
-    if (!carousel.length) return;
-    const t = setInterval(() => setSlide((s) => (s + 1) % carousel.length), 3000);
-    return () => clearInterval(t);
-  }, [carousel.length, cat, icon]);
-  const goBack = () => (window.location.href = `/?view=category&cat=${cat}`);
-  const goHome = () => (window.location.href = "/?view=home");
+  useEffect(() => { if (!carousel.length) return; const t = setInterval(() => setSlide((s) => (s + 1) % carousel.length), 3000); return () => clearInterval(t); }, [carousel.length, cat, icon]);
+  const goBack = () => purpyGo(`/?view=category&cat=${cat}`);
+  const goHome = () => purpyGo(`/?view=home`);
   const saveCart = (newCart) => { setCart(newCart); localStorage.setItem("purpyCart", JSON.stringify(newCart)); };
   const getKey = (pr) => pr.id || pr.name;
   const getQty = (name) => { const f = cart.find((i) => (i.id || i.name) === name || i.name === name); return f ? (f.quantity || 1) : 0; };
   const normalizeProduct = (pr) => ({ ...pr, id: pr.id || pr.name, _id: pr.id || pr.name, img: pr.img || pr.image || pr.imageUrl || "", image: pr.img || pr.image || pr.imageUrl || "", imageUrl: pr.img || pr.image || pr.imageUrl || "", category: pr.category || cat, quantity: 1 });
   const addOne = (pr) => { const key = getKey(pr); const f = cart.find((i) => (i.id || i.name) === key); if (f) { saveCart(cart.map((i) => (i.id || i.name) === key ? { ...i, quantity: (i.quantity || 1) + 1 } : i)); } else { saveCart([...cart, normalizeProduct(pr)]); } };
   const removeOne = (pr) => { const key = getKey(pr); const f = cart.find((i) => (i.id || i.name) === key); if (!f) return; if ((f.quantity || 1) <= 1) saveCart(cart.filter((i) => (i.id || i.name) !== key)); else saveCart(cart.map((i) => (i.id || i.name) === key ? { ...i, quantity: i.quantity - 1 } : i)); };
-  const buyNow = (pr) => { addOne(pr); setTimeout(() => { window.location.href = "/?view=checkout"; }, 100); };
+  const buyNow = (pr) => { addOne(pr); setTimeout(() => { purpyGo(`/?view=checkout`); }, 100); };
   const toggleWish = (pr) => { const key = getKey(pr); const exists = wish.find((i) => (i.id || i.name) === key); const nw = exists ? wish.filter((i) => (i.id || i.name) !== key) : [...wish, normalizeProduct(pr)]; setWish(nw); localStorage.setItem("purpyWishlist", JSON.stringify(nw)); };
   const isWished = (name) => wish.some((i) => (i.id || i.name) === name || i.name === name);
-  const openProduct = (pr) => { window.location.href = `/?view=product&id=${encodeURIComponent(pr.id || pr.name)}&cat=${cat}&icon=${icon}`; };
-  if (!items.length) { return (<div style={{ padding: 20, textAlign: "center" }}><h2>⚠️ No Products Found</h2><p>ALL_IMAGES file is missing this category - cat={cat} icon={icon}</p><button onClick={goHome} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>Go Home</button></div>); }
+  const openProduct = (pr) => { localStorage.setItem("purpySelectedProduct", JSON.stringify(normalizeProduct(pr))); purpyGo(`/?view=product&id=${encodeURIComponent(pr.id || pr.name)}&cat=${cat}&icon=${icon}`); };
+  if (!items.length) { return (<div style={{ padding: 20, textAlign: "center" }}><h2>⚠️ No Products Found</h2><p>cat={cat} icon={icon}</p><button onClick={goHome} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>Go Home</button></div>); }
   return (
     <div style={{ minHeight: "100vh", background: "#f8fdf8" }}>
       <div style={{ background: "white", padding: "10px 12px", display: "flex", gap: "8px", borderBottom: "1px solid #eee", position: "sticky", top: 0, zIndex: 10, alignItems: "center" }}>
         <button onClick={goBack} style={{ background: "white", border: "1px solid #ddd", padding: "8px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer" }}>← Back</button>
         <button onClick={goHome} style={{ background: "#2e7d32", color: "white", border: "none", padding: "8px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer" }}>{t("home")}</button>
         <span style={{ background: "#e8f5e9", color: "#2e7d32", padding: "8px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{cat} › {icon} - {items.length} Products</span>
-        <button onClick={() => window.location.href = "/?view=cart"} style={{ marginLeft: "auto", background: "#111", color: "white", border: "none", padding: "8px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", fontWeight: 800 }}>🛒 {t("cart")} ({cart.reduce((s, i) => s + (i.quantity || 1), 0)})</button>
+        <button onClick={() => purpyGo(`/?view=cart`)} style={{ marginLeft: "auto", background: "#111", color: "white", border: "none", padding: "8px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", fontWeight: 800 }}>🛒 {t("cart")} ({cart.reduce((s, i) => s + (i.quantity || 1), 0)})</button>
       </div>
       {!!carousel.length && (
         <div style={{ position: "relative", width: "100%", height: "clamp(320px, 58vw, 520px)", overflow: "hidden", background: "#111", borderRadius: "0 0 24px 24px" }}>
@@ -919,7 +1085,7 @@ export default function ItemsPage() {
       )}
       <div style={{ maxWidth: "1350px", margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: "20px" }}>
-          {items.map((pr, i) => (
+          {items.map((pr) => (
             <div key={pr.id} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #eee", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
               <div style={{ position: "relative", background: "#fff", padding: 8 }}>
                 <img src={pr.img} onClick={() => openProduct(pr)} style={{ width: "100%", height: "280px", objectFit: "contain", display: "block", borderRadius: 12, cursor: "pointer" }} alt={pr.name} />

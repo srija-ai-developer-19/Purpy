@@ -4,40 +4,49 @@ const User = require("../models/User");
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token - Please login" });
     }
 
     const token = authHeader.split(" ")[1];
-    console.log("Token received:", token.substring(0,30));
 
-    // DUMMY TOKEN - ALLOW FOR TESTING - PURCHASE FIX
-    if (token.startsWith("dummy-")) {
-      console.log("Dummy token - allowing for testing");
-      req.user = { _id: "test_user_id", name: "Test User", email: "test@purpy.com" };
-      return next();
+    if (!token) {
+      return res.status(401).json({ message: "No token - Please login" });
     }
 
-    // REAL JWT VERIFY
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select("-password");
-      if (!req.user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-      next();
-    } catch (jwtErr) {
-      console.error("JWT Error:", jwtErr.message);
-      // JWT fail aina kuda - testing ki allow
-      req.user = { _id: "test_user_id", name: "Test User" };
-      next();
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET missing in .env");
+      return res.status(500).json({ message: "Server config error" });
     }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ message: "User not found - Please login again" });
+    }
+
+    req.user = user;
+    next();
   } catch (err) {
-    console.error("Auth error:", err);
-    res.status(401).json({ message: "Session expired - Please login again", error: err.message });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Session expired - Please login again" });
+    }
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token - Please login again" });
+    }
+    console.error("Auth error:", err.message);
+    return res.status(401).json({ message: "Session expired - Please login again" });
   }
 };
 
-module.exports = { protect };
+// Admin only - Must be used after protect
+const isAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin only - Access denied" });
+  }
+  next();
+};
+
+module.exports = { protect, isAdmin };

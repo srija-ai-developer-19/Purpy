@@ -7,32 +7,60 @@ function safeNum(v, def) {
   return n;
 }
 
+// ✅ Okate Chota Nunchi Balance Techukune Function
+function getWallet() {
+  try {
+    const raw = localStorage.getItem("purpyWallet");
+    if (raw) {
+      // Kotha Format: { balance, coins }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return {
+          balance: safeNum(parsed.balance, 1250),
+          coins: safeNum(parsed.coins, 125),
+        };
+      }
+      // Pata Format: "1250" - String Ga Unte
+      return { balance: safeNum(raw, 1250), coins: safeNum(localStorage.getItem("purpyCoins"), 125) };
+    }
+    const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
+    if (user && user.wallet !== undefined) {
+      return { balance: safeNum(user.wallet, 1250), coins: safeNum(user.coins, 125) };
+    }
+  } catch (e) {}
+  return { balance: 1250, coins: 125 };
+}
+
 export default function Wallet() {
   const [balance, setBalance] = useState(1250);
   const [coins, setCoins] = useState(125);
   const [showAdd, setShowAdd] = useState(false);
   const [amount, setAmount] = useState("");
+
   useEffect(() => {
-    let bal = 1250, cn = 125;
+    const w = getWallet();
+    setBalance(w.balance);
+    setCoins(w.coins);
+    // Okate Format Lo Save - Malli Thappu Rakunda
+    localStorage.setItem("purpyWallet", JSON.stringify(w));
+  }, []);
+
+  const save = (bal, cn) => {
+    const b = safeNum(bal, 1250);
+    const cc = safeNum(cn, 125);
+    setBalance(b);
+    setCoins(cc);
+    localStorage.setItem("purpyWallet", JSON.stringify({ balance: b, coins: cc }));
     try {
       const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
-      if (user && user.wallet !== undefined) bal = safeNum(user.wallet, 1250);
-      const w = localStorage.getItem("purpyWallet");
-      if (w !== null) bal = safeNum(w, 1250);
-      const c = localStorage.getItem("purpyCoins");
-      if (c !== null) cn = safeNum(c, 125);
-    } catch (e) { bal = 1250; cn = 125; }
-    setBalance(bal); setCoins(cn);
-    localStorage.setItem("purpyWallet", String(bal));
-    localStorage.setItem("purpyCoins", String(cn));
-  }, []);
-  const save = (bal, cn) => {
-    const b = safeNum(bal, 1250); const cc = safeNum(cn, 125);
-    setBalance(b); setCoins(cc);
-    localStorage.setItem("purpyWallet", String(b));
-    localStorage.setItem("purpyCoins", String(cc));
-    try { const user = JSON.parse(localStorage.getItem("purpyUser") || "null"); if (user) { user.wallet = b; localStorage.setItem("purpyUser", JSON.stringify(user)); } } catch (e) {}
+      if (user) {
+        user.wallet = b;
+        user.coins = cc;
+        localStorage.setItem("purpyUser", JSON.stringify(user));
+      }
+    } catch (e) {}
   };
+
   const addMoney = (amt) => {
     const a = safeNum(amt, 0);
     if (!a || a < 10) return alert("⚠️ Please enter Amount - Minimum ₹10");
@@ -45,9 +73,11 @@ export default function Wallet() {
       list.unshift({ id: Date.now(), title: "Money Added - UPI", amt: `+₹${a}`, time: "Just Now", type: "credit" });
       localStorage.setItem("purpyWalletTxns", JSON.stringify(list));
     } catch (e) {}
-    setShowAdd(false); setAmount("");
+    setShowAdd(false);
+    setAmount("");
     alert(`✅ ₹${a} Added! New Balance - ₹${nb}`);
   };
+
   const txns = (() => { try { const t = JSON.parse(localStorage.getItem("purpyWalletTxns") || "[]"); return Array.isArray(t) ? t : []; } catch (e) { return []; } })();
   const defaultTxns = [
     { title: "Welcome Bonus - PURPY", amt: "+₹1250", time: "Signup Bonus", type: "credit" },
@@ -55,7 +85,7 @@ export default function Wallet() {
     { title: "First Order Offer - PURPY100", amt: "-₹100", time: "Coupon Applied", type: "debit" },
   ];
   const allTxns = txns.length > 0 ? txns : defaultTxns;
-  const resetWallet = () => { save(1250, 125); alert("✅ Wallet Reset - Balance ₹1250"); };
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "14px 12px 30px" }}>
       <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900 }}>💰 My Wallet</h2>
@@ -92,8 +122,7 @@ export default function Wallet() {
       <div style={{ background: "white", border: "1px solid #eee", borderRadius: 14, overflow: "hidden" }}>
         {allTxns.map((t, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: i < allTxns.length - 1 ? "1px solid #f3f4f6" : "none" }}><div><b style={{ fontSize: 13, display: "block" }}>{t.title}</b><span style={{ fontSize: 11, color: "#888" }}>{t.time}</span></div><b style={{ fontSize: 14, color: t.type === "credit" ? "#16a34a" : "#dc2626" }}>{t.amt}</b></div>))}
       </div>
-      <button onClick={resetWallet} style={{ marginTop: 12, width: "100%", background: "white", border: "1px solid #ddd", padding: "10px", borderRadius: 12, fontWeight: 700, cursor: "pointer", fontSize: 12, color: "#666" }}>🔄 If Wallet Balance is Wrong - Click to Fix - ₹1250</button>
-      <button onClick={() => purpyGo("/?view=home")} style={{ marginTop: 10, width: "100%", background: "#111", color: "white", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>← Back to Home</button>
+      <button onClick={() => purpyGo("/?view=home")} style={{ marginTop: 14, width: "100%", background: "#111", color: "white", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>← Back to Home</button>
     </div>
   );
 }

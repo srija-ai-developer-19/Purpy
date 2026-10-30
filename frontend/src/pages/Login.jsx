@@ -3,10 +3,11 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { sendOTP, verifyOTP } from "../api/auth";
 import "./Login.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  // ⭐ ALREADY LOGIN - AYI - UNTE - DETAILS - CHUPINCHU ⭐
   const savedUser = JSON.parse(localStorage.getItem("purpyUser") || "null");
 
   const [tab, setTab] = useState("phone");
@@ -17,53 +18,134 @@ function Login() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const doLoginSuccess = (userData) => {
-    localStorage.setItem("purpyToken", "purpy-demo-token");
-    localStorage.setItem("token", "purpy-demo-token");
-    localStorage.setItem("authToken", "purpy-demo-token");
+  // Save REAL JWT token from backend - Not fake token
+  const doLoginSuccess = (token, userData) => {
+    if (!token) {
+      setMessage("❌ Login failed - No token from server");
+      setIsLoading(false);
+      return;
+    }
+    localStorage.setItem("purpyToken", token);
+    localStorage.setItem("token", token);
+    localStorage.setItem("authToken", token);
     localStorage.setItem("purpyUser", JSON.stringify(userData));
-    localStorage.setItem("purpyWallet", JSON.stringify({ balance: userData.wallet, goldCoins: userData.goldCoins }));
-    const redirectTo = location.state?.from || sessionStorage.getItem("purpyRedirectAfterLogin") || "/?view=products";
+    localStorage.setItem(
+      "purpyWallet",
+      JSON.stringify({ balance: userData.wallet ?? 1250, goldCoins: userData.goldCoins ?? 320 })
+    );
+    const redirectTo =
+      location.state?.from ||
+      sessionStorage.getItem("purpyRedirectAfterLogin") ||
+      "/?view=products";
     sessionStorage.removeItem("purpyRedirectAfterLogin");
     setIsLoading(false);
     navigate(redirectTo, { replace: true });
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("purpyUser"); localStorage.removeItem("purpyToken");
-    localStorage.removeItem("token"); localStorage.removeItem("authToken");
+    localStorage.removeItem("purpyUser");
+    localStorage.removeItem("purpyToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("authToken");
     window.location.reload();
   };
 
   const handleSendOTP = async () => {
-    if (phone.length !== 10) { setMessage("❌ Please Enter 10 Digit Mobile Number"); return; }
-    setIsLoading(true); setMessage("");
+    if (phone.length !== 10) {
+      setMessage("❌ Please Enter 10 Digit Mobile Number");
+      return;
+    }
+    setIsLoading(true);
+    setMessage("");
     const res = await sendOTP(phone);
     setIsLoading(false);
-    if (res.success) { setStep(2); setMessage("✅ OTP Sent! Demo OTP - 1234"); }
-    else setMessage("❌ " + res.message);
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otp.length < 4) { setMessage("❌ Please Enter OTP - Demo - 1234"); return; }
-    setIsLoading(true); setMessage("");
-    const res = await verifyOTP(phone, otp);
     if (res.success) {
-      const userData = { id: `user_${Date.now()}`, phone, name: "Purpy Customer", email: phone + "@purpy.com", wallet: 1250, goldCoins: 320, vouchers: [{ code: "PURPY100", discount: 100 }] };
-      doLoginSuccess(userData);
-    } else { setIsLoading(false); setMessage("❌ " + res.message); }
+      setStep(2);
+      setMessage("✅ OTP Sent! Demo OTP - 1234");
+    } else setMessage("❌ " + res.message);
   };
 
-  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-  const handleEmailSubmit = (e) => {
-    e.preventDefault(); setMessage(""); setIsLoading(true);
-    const email = formData.email.trim(); const password = formData.password;
-    if (!email || !password) { setMessage("Please enter an email and password."); setIsLoading(false); return; }
-    const userData = { id: `user_${Date.now()}`, email, name: email.split("@")[0] || "Purpy User", wallet: 1250, goldCoins: 320, vouchers: [{ code: "PURPY100", discount: 100 }] };
-    doLoginSuccess(userData);
+  // Phone OTP - Get REAL JWT from backend using phone email
+  const handleVerifyOTP = async () => {
+    if (otp.length < 4) {
+      setMessage("❌ Please Enter OTP - Demo - 1234");
+      return;
+    }
+    setIsLoading(true);
+    setMessage("");
+    const res = await verifyOTP(phone, otp);
+    if (!res.success) {
+      setIsLoading(false);
+      setMessage("❌ " + res.message);
+      return;
+    }
+    try {
+      const email = `${phone}@purpy.com`;
+      const password = `Purpy${phone}!`;
+      // Try login first, if no account then signup
+      let r = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      let data = await r.json();
+      if (!r.ok) {
+        r = await fetch(`${API_URL}/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Purpy Customer", email, password }),
+        });
+        data = await r.json();
+      }
+      if (!r.ok) throw new Error(data.message || "Login failed");
+      doLoginSuccess(data.token, {
+        ...data.user,
+        phone,
+        wallet: 1250,
+        goldCoins: 320,
+        vouchers: [{ code: "PURPY100", discount: 100 }],
+      });
+    } catch (e) {
+      setIsLoading(false);
+      setMessage("❌ " + e.message);
+    }
   };
 
-  // ⭐ ALREADY LOGGED IN - PROFILE CARD ⭐
+  const handleChange = (e) =>
+    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  // Email Login - REAL backend call - No fake user
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setIsLoading(true);
+    const email = formData.email.trim();
+    const password = formData.password;
+    if (!email || !password) {
+      setMessage("Please enter an email and password.");
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const r = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || "Login failed");
+      doLoginSuccess(data.token, {
+        ...data.user,
+        wallet: 1250,
+        goldCoins: 320,
+        vouchers: [{ code: "PURPY100", discount: 100 }],
+      });
+    } catch (err) {
+      setIsLoading(false);
+      setMessage("❌ " + err.message);
+    }
+  };
+
   if (savedUser) {
     return (
       <main className="login-page">

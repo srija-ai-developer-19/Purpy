@@ -16,7 +16,11 @@ import Settings from "./pages/Settings.jsx";
 import SplashScreen from "./components/SplashScreen.jsx";
 import Wallet from "./pages/Wallet.jsx";
 import Account from "./pages/Account.jsx";
+import Signup from "./pages/Signup.jsx";
+import Login from "./pages/Login.jsx";
 import { LanguageProvider } from "./context/LanguageContext.jsx";
+
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export function purpyGo(url) {
   window.history.pushState({}, "", url);
@@ -45,12 +49,15 @@ export default function App() {
     return () => { window.removeEventListener("popstate", onNav); window.removeEventListener("purpy-navigate", onNav); };
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [urlKey]);
+
+  const isAuthPage = view === "signup" || view === "login";
+
   return (
     <LanguageProvider>
       {showSplash && <SplashScreen onDone={hideSplash} />}
       <div style={{ minHeight: "100vh", background: "#fafafb", display: "flex", flexDirection: "column" }}>
         <Header onOpenAI={() => setAiOpen(true)} />
-        {view !== "search" && <HomeSearchBar />}
+        {view !== "search" && !isAuthPage && <HomeSearchBar />}
         <main style={{ flex: 1 }} key={urlKey}>
           {view === "home" && <Home />}
           {view === "category" && <CategoryPage />}
@@ -64,8 +71,11 @@ export default function App() {
           {view === "settings" && <Settings />}
           {view === "wallet" && <Wallet />}
           {view === "account" && <Account />}
-          {!["home", "category", "items", "cart", "wishlist", "search", "product", "checkout", "orders", "settings", "wallet", "account"].includes(view) && <Home />}
+          {view === "signup" && <Signup />}
+          {view === "login" && <Login />}
+          {!["home", "category", "items", "cart", "wishlist", "search", "product", "checkout", "orders", "settings", "wallet", "account", "signup", "login"].includes(view) && <Home />}
         </main>
+        {/* ✅ FIX - Ikkade Thappu Undhi - false -> true chesa */}
         <Footer onOpenAI={() => setAiOpen(true)} />
         <AIHelpDesk open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>

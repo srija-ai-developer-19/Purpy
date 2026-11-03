@@ -13,7 +13,6 @@ export default function Home() {
   ];
   useEffect(() => { const t = setInterval(() => setSlide((s) => (s + 1) % banners.length), 3500); return () => clearInterval(t); }, [banners.length]);
 
-  // ✅ LAST IMAGE - FOOTBALL - Pexels Photo - Emoji Ledu - White Ledu
   const footballImg = "https://images.pexels.com/photos/47730/the-ball-stadion-football-the-pitch-47730.jpeg?auto=compress&cs=tinysrgb&w=800";
   const fallbackImg = "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80";
   const handleImgError = (e) => {
@@ -43,7 +42,6 @@ export default function Home() {
               name: p.name,
               price: p.price,
               oldPrice: p.oldPrice || p.mrp || p.price,
-              // ✅ Football aithe Pexels image - Migilina vati backend image ye
               img: (p.name || "").toLowerCase().includes("football") ? footballImg : (p.img || p.image || p.images?.[0] || fallbackImg),
               off: p.off || (p.oldPrice ? `${Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)}% OFF` : ""),
               category: p.category,
@@ -123,7 +121,8 @@ export default function Home() {
         <div><h3 style={{ margin: 0, fontSize: 19, fontWeight: 900 }}>Deals of the Day</h3><p style={{ margin: "2px 0 0", fontSize: 12, color: "#666" }}>Kakinada • Today Only</p></div>
         <span onClick={goItems} style={{ cursor: "pointer", color: "#16a34a", fontWeight: 800, fontSize: 13 }}>View All →</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginTop: 16 }}>
+      {/* ✅ FIX - Deals Grid - Mobile lo scroll - Desktop lo 5 columns - No Squeeze */}
+      <div className="deals-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginTop: 16 }}>
         {deals.map((d) => (
           <div key={d.id} onClick={() => { localStorage.setItem("purpySelectedProduct", JSON.stringify(d)); purpyGo(`/?view=product&id=${d.id}`); }} style={{ cursor: "pointer", background: "white", borderRadius: 14, overflow: "hidden", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.06)", minWidth: 0 }}>
             <div style={{ position: "relative", height: 200, overflow: "hidden", background: "#f3f4f6" }}>

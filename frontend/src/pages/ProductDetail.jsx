@@ -45,7 +45,6 @@ export default function ProductDetail() {
     alert(`✅ ${product.name} - Added to Cart!`);
     purpyGo("/?view=cart");
   };
-  // ✅ FIX - Buy Now - Cart ki kaadhu - Direct Checkout ki
   const buyNow = () => {
     if (!product || product.notFound) return;
     addToCartOnly();
@@ -53,8 +52,12 @@ export default function ProductDetail() {
   };
   if (!product) return <div style={{ padding: 40, textAlign: "center" }}>Loading Product...</div>;
   if (product.notFound) return <div style={{ padding: 40, textAlign: "center" }}><h2>⚠️ Product Not Found</h2><p>{product.desc}</p><button onClick={() => purpyGo("/?view=home")} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>Back to Home</button></div>;
-  let userName = "Srija", userPhone = "99666 12345", userAddr = "Main Road, Kakinada, Andhra Pradesh - 533001";
-  try { const u = JSON.parse(localStorage.getItem("purpyUser") || "null"); if (u) { userName = u.name || userName; userPhone = u.phone || userPhone; userAddr = u.address || userAddr; } } catch (e) {}
+  
+  // ✅ FIX - No hardcoded Srija - Account lo unte ne chupistundi
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem("purpyUser") || "null"); } catch (e) {}
+  const hasUser = user && (user.name || user.phone || user.address);
+
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "14px 12px 30px" }}>
       <span onClick={() => purpyGo("/?view=home")} style={{ cursor: "pointer", fontSize: 13, color: "#16a34a", fontWeight: 700 }}>← Back to Home</span>
@@ -77,11 +80,26 @@ export default function ProductDetail() {
           <button onClick={() => setQty(qty + 1)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #ddd", background: "white", fontSize: 18, cursor: "pointer" }}>+</button>
           <b style={{ marginLeft: 8 }}>Total: ₹{product.price * qty}</b>
         </div>
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14, marginTop: 16 }}>
-          <b style={{ fontSize: 14 }}>👤 Delivery Details - Customer</b>
-          <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 6, color: "#333" }}><div>👤 <b>Name:</b> {userName}</div><div>📞 <b>Phone:</b> {userPhone}</div><div>📍 <b>Address:</b> {userAddr}</div></div>
-          <p style={{ margin: "8px 0 0", fontSize: 11, color: "#666" }}>To change address, go to Account &gt; Edit Details</p>
-        </div>
+        
+        {/* ✅ FIX - Delivery Details - Account lo unte chupistu, lekapothe login cheyamani */}
+        {hasUser ? (
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14, marginTop: 16 }}>
+            <b style={{ fontSize: 14 }}>👤 Delivery Details - Customer</b>
+            <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 6, color: "#333" }}>
+              {user.name && <div>👤 <b>Name:</b> {user.name}</div>}
+              {user.phone && <div>📞 <b>Phone:</b> {user.phone}</div>}
+              {user.address && <div>📍 <b>Address:</b> {user.address}</div>}
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#666" }}>To change address, go to Account &gt; Edit Details</p>
+          </div>
+        ) : (
+          <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 14, padding: 14, marginTop: 16, textAlign:"center" }}>
+            <b style={{ fontSize: 14 }}>📦 Delivery Details</b>
+            <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>Login chesi Account lo address add cheyyandi</p>
+            <button onClick={() => purpyGo("/?view=account")} style={{ marginTop: 8, background: "#111", color: "white", border: "none", padding: "8px 16px", borderRadius: 20, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Go to Account →</button>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button onClick={addToCart} style={{ flex: 1, background: "#16a34a", color: "white", border: "none", padding: "13px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>🛒 Add to Cart - ₹{product.price * qty}</button>
           <button onClick={buyNow} style={{ flex: 1, background: "#111", color: "white", border: "none", padding: "13px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>Buy Now →</button>

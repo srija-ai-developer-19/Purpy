@@ -16,24 +16,24 @@ function getWallet() {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
         return {
-          balance: safeNum(parsed.balance, 1250),
-          coins: safeNum(parsed.coins, 125),
+          balance: safeNum(parsed.balance, 250),
+          coins: safeNum(parsed.coins, 25),
         };
       }
       // Pata Format: "1250" - String Ga Unte
-      return { balance: safeNum(raw, 1250), coins: safeNum(localStorage.getItem("purpyCoins"), 125) };
+      return { balance: safeNum(raw, 250), coins: safeNum(localStorage.getItem("purpyCoins"), 25) };
     }
     const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
     if (user && user.wallet !== undefined) {
-      return { balance: safeNum(user.wallet, 1250), coins: safeNum(user.coins, 125) };
+      return { balance: safeNum(user.wallet, 250), coins: safeNum(user.coins, 25) };
     }
   } catch (e) {}
-  return { balance: 1250, coins: 125 };
+  return { balance: 250, coins: 25 };
 }
 
 export default function Wallet() {
-  const [balance, setBalance] = useState(1250);
-  const [coins, setCoins] = useState(125);
+  const [balance, setBalance] = useState(250);
+  const [coins, setCoins] = useState(25);
   const [showAdd, setShowAdd] = useState(false);
   const [amount, setAmount] = useState("");
 
@@ -46,8 +46,8 @@ export default function Wallet() {
   }, []);
 
   const save = (bal, cn) => {
-    const b = safeNum(bal, 1250);
-    const cc = safeNum(cn, 125);
+    const b = safeNum(bal, 250);
+    const cc = safeNum(cn, 25);
     setBalance(b);
     setCoins(cc);
     localStorage.setItem("purpyWallet", JSON.stringify({ balance: b, coins: cc }));
@@ -65,7 +65,7 @@ export default function Wallet() {
     const a = safeNum(amt, 0);
     if (!a || a < 10) return alert("⚠️ Please enter Amount - Minimum ₹10");
     if (a > 10000) return alert("⚠️ Maximum ₹10000 at a time");
-    const nb = safeNum(balance, 1250) + a;
+    const nb = safeNum(balance, 250) + a;
     save(nb, coins);
     try {
       const txns = JSON.parse(localStorage.getItem("purpyWalletTxns") || "[]");
@@ -80,8 +80,8 @@ export default function Wallet() {
 
   const txns = (() => { try { const t = JSON.parse(localStorage.getItem("purpyWalletTxns") || "[]"); return Array.isArray(t) ? t : []; } catch (e) { return []; } })();
   const defaultTxns = [
-    { title: "Welcome Bonus - PURPY", amt: "+₹1250", time: "Signup Bonus", type: "credit" },
-    { title: "PURPY Coins - 125 Coins", amt: "+125 Coins", time: "Every Order - 5% Coins", type: "credit" },
+    { title: "Welcome Bonus - PURPY", amt: "+₹250", time: "Signup Bonus", type: "credit" },
+    { title: "PURPY Coins - 25 Coins", amt: "+25 Coins", time: "Every Order - 5% Coins", type: "credit" },
     { title: "First Order Offer - PURPY100", amt: "-₹100", time: "Coupon Applied", type: "debit" },
   ];
   const allTxns = txns.length > 0 ? txns : defaultTxns;
@@ -92,8 +92,8 @@ export default function Wallet() {
       <p style={{ margin: "0 0 14px", fontSize: 12, color: "#666" }}>PURPY Wallet • Kakinada • Safe & Secure</p>
       <div style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: 18, padding: 20, color: "white" }}>
         <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>Total Balance</p>
-        <b style={{ fontSize: 38, display: "block", margin: "6px 0 2px" }}>₹{safeNum(balance, 1250)}</b>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>🪙 {safeNum(coins, 125)} PURPY Coins • 1 Coin = ₹1 • Can be used in Orders</p>
+        <b style={{ fontSize: 38, display: "block", margin: "6px 0 2px" }}>₹{safeNum(balance, 250)}</b>
+        <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>🪙 {safeNum(coins, 25)} PURPY Coins • 1 Coin = ₹1 • Can be used in Orders</p>
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button onClick={() => setShowAdd(true)} style={{ flex: 1, background: "white", color: "#16a34a", border: "none", padding: "11px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>+ Add Money</button>
           <button onClick={() => purpyGo("/?view=items")} style={{ flex: 1, background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid white", padding: "11px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>🛒 Shop Now</button>

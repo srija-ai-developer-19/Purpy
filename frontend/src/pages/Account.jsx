@@ -12,8 +12,8 @@ export default function Account() {
   const [accounts, setAccounts] = useState([]);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState(GUEST_USER);
-  const [wallet, setWallet] = useState(1250);
-  const [coins, setCoins] = useState(125);
+  const [wallet, setWallet] = useState(250);
+  const [coins, setCoins] = useState(25);
   const [orderCount, setOrderCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -38,8 +38,8 @@ export default function Account() {
       } else {
         setUser(GUEST_USER); setForm(GUEST_USER);
       }
-      const w = localStorage.getItem("purpyWallet"); if (w !== null) setWallet(safeNum(w, 1250)); else if (u && u.wallet !== undefined) setWallet(safeNum(u.wallet, 1250));
-      const c = localStorage.getItem("purpyCoins"); if (c !== null) setCoins(safeNum(c, 125));
+      const w = localStorage.getItem("purpyWallet"); if (w !== null) setWallet(safeNum(w, 250)); else if (u && u.wallet !== undefined) setWallet(safeNum(u.wallet, 250));
+      const c = localStorage.getItem("purpyCoins"); if (c !== null) setCoins(safeNum(c, 25));
       setOrderCount(JSON.parse(localStorage.getItem("purpyOrders") || "[]").length);
       const cart = JSON.parse(localStorage.getItem("purpyCart") || "[]"); setCartCount(cart.reduce((s, p) => s + (p.quantity || 1), 0));
     } catch (e) {}
@@ -55,7 +55,6 @@ export default function Account() {
     localStorage.setItem("purpyAccounts", JSON.stringify(updated)); setAccounts(updated);
     setUser(data); setEdit(false); alert("Profile Saved!");
   };
-  // ✅ FIX - LOGOUT - UI Maraledu - Logic Matrame Marcha
   const doLogout = () => {
     if (!window.confirm("Logout?")) return;
     try {
@@ -67,14 +66,12 @@ export default function Account() {
       localStorage.removeItem("token");
       localStorage.removeItem("authToken");
     } catch (e) {}
-    // ✅ State Kuda Clear - Lekapothe Same Account Kanipisthundhi
     setAccounts([]);
     setUser(GUEST_USER);
     setForm(GUEST_USER);
     setEdit(false);
     setShowAdd(false);
     alert("Logged Out!");
-    // ✅ Account Page Ki Kaadhu - Home Ki - Appude Guest Kanipisthadu
     purpyGo(`/?view=home`);
     window.location.reload();
   };
@@ -135,7 +132,6 @@ export default function Account() {
           <div style={{ fontSize: 36 }}>👋</div>
           <b style={{ fontSize: 18, display: "block", marginTop: 6 }}>Hello, Guest!</b>
           <p style={{ fontSize: 12, color: "#666", margin: "6px 0 12px" }}>No account - You can browse full app.<br />Add account only to place an order.</p>
-          {/* ⭐ SIGNUP / LOGIN - IKKADA ADD CHESANU - UI SAME ⭐ */}
           <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 10 }}>
             <button onClick={() => go("login")} style={{ flex: 1, background: "#111", color: "white", border: "none", padding: "12px 10px", borderRadius: 20, fontWeight: 900, cursor: "pointer", fontSize: 13 }}>🔐 Login</button>
             <button onClick={() => go("signup")} style={{ flex: 1, background: "#ff3d00", color: "white", border: "none", padding: "12px 10px", borderRadius: 20, fontWeight: 900, cursor: "pointer", fontSize: 13 }}>🎉 Signup - Get ₹100 Free</button>

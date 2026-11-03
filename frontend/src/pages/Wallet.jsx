@@ -7,122 +7,147 @@ function safeNum(v, def) {
   return n;
 }
 
-// ✅ Okate Chota Nunchi Balance Techukune Function
-function getWallet() {
-  try {
-    const raw = localStorage.getItem("purpyWallet");
-    if (raw) {
-      // Kotha Format: { balance, coins }
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        return {
-          balance: safeNum(parsed.balance, 250),
-          coins: safeNum(parsed.coins, 25),
-        };
-      }
-      // Pata Format: "1250" - String Ga Unte
-      return { balance: safeNum(raw, 250), coins: safeNum(localStorage.getItem("purpyCoins"), 25) };
-    }
-    const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
-    if (user && user.wallet !== undefined) {
-      return { balance: safeNum(user.wallet, 250), coins: safeNum(user.coins, 25) };
-    }
-  } catch (e) {}
-  return { balance: 250, coins: 25 };
-}
-
 export default function Wallet() {
-  const [balance, setBalance] = useState(250);
-  const [coins, setCoins] = useState(25);
-  const [showAdd, setShowAdd] = useState(false);
-  const [amount, setAmount] = useState("");
-
-  useEffect(() => {
-    const w = getWallet();
-    setBalance(w.balance);
-    setCoins(w.coins);
-    // Okate Format Lo Save - Malli Thappu Rakunda
-    localStorage.setItem("purpyWallet", JSON.stringify(w));
-  }, []);
-
-  const save = (bal, cn) => {
-    const b = safeNum(bal, 250);
-    const cc = safeNum(cn, 25);
-    setBalance(b);
-    setCoins(cc);
-    localStorage.setItem("purpyWallet", JSON.stringify({ balance: b, coins: cc }));
+  const [balance, setBalance] = useState(() => {
     try {
       const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
-      if (user) {
-        user.wallet = b;
-        user.coins = cc;
+      if (user?.phone) {
+        const ub = localStorage.getItem(`purpyWallet_${user.phone}`);
+        if (ub !== null) return safeNum(ub, 250);
+      }
+      const w = localStorage.getItem("purpyWallet");
+      if (w !== null) return safeNum(w, 250);
+      if (user?.wallet !== undefined) return safeNum(user.wallet, 250);
+      return 250;
+    } catch { return 250; }
+  });
+
+  const [addAmount, setAddAmount] = useState(100);
+  const [custom, setCustom] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+
+  // SAVE TO ALL KEYS - HEADER KI KUDA VELTHUNDI
+  const saveWallet = (newBalance) => {
+    const bal = safeNum(newBalance, 0);
+    setBalance(bal);
+    
+    try {
+      // 1. Main key
+      localStorage.setItem("purpyWallet", String(bal));
+      
+      // 2. User specific key
+      const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
+      if (user?.phone) {
+        localStorage.setItem(`purpyWallet_${user.phone}`, String(bal));
+        // user object lo kuda update
+        user.wallet = bal;
         localStorage.setItem("purpyUser", JSON.stringify(user));
       }
-    } catch (e) {}
+      
+      // Force header update - storage event trigger
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("purpyWalletUpdate", { detail: bal }));
+    } catch {}
   };
 
-  const addMoney = (amt) => {
-    const a = safeNum(amt, 0);
-    if (!a || a < 10) return alert("⚠️ Please enter Amount - Minimum ₹10");
-    if (a > 10000) return alert("⚠️ Maximum ₹10000 at a time");
-    const nb = safeNum(balance, 250) + a;
-    save(nb, coins);
-    try {
-      const txns = JSON.parse(localStorage.getItem("purpyWalletTxns") || "[]");
-      const list = Array.isArray(txns) ? txns : [];
-      list.unshift({ id: Date.now(), title: "Money Added - UPI", amt: `+₹${a}`, time: "Just Now", type: "credit" });
-      localStorage.setItem("purpyWalletTxns", JSON.stringify(list));
-    } catch (e) {}
+  const handleAddMoney = () => {
+    let amt = 0;
+    if (custom !== "") amt = safeNum(custom, 0);
+    else amt = safeNum(addAmount, 0);
+
+    if (amt < 10) {
+      alert("Minimum ₹10 add cheyyali");
+      return;
+    }
+
+    const newBal = balance + amt;
+    saveWallet(newBal);
+    setCustom("");
     setShowAdd(false);
-    setAmount("");
-    alert(`✅ ₹${a} Added! New Balance - ₹${nb}`);
+    alert(`₹${amt} Added! New Balance: ₹${newBal}`);
+    // Header update kosam reload
+    setTimeout(() => window.location.reload(), 300);
   };
 
-  const txns = (() => { try { const t = JSON.parse(localStorage.getItem("purpyWalletTxns") || "[]"); return Array.isArray(t) ? t : []; } catch (e) { return []; } })();
-  const defaultTxns = [
-    { title: "Welcome Bonus - PURPY", amt: "+₹250", time: "Signup Bonus", type: "credit" },
-    { title: "PURPY Coins - 25 Coins", amt: "+25 Coins", time: "Every Order - 5% Coins", type: "credit" },
-    { title: "First Order Offer - PURPY100", amt: "-₹100", time: "Coupon Applied", type: "debit" },
-  ];
-  const allTxns = txns.length > 0 ? txns : defaultTxns;
+  const quickAmounts = [100, 200, 500, 1000];
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "14px 12px 30px" }}>
-      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 900 }}>💰 My Wallet</h2>
-      <p style={{ margin: "0 0 14px", fontSize: 12, color: "#666" }}>PURPY Wallet • Kakinada • Safe & Secure</p>
-      <div style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: 18, padding: 20, color: "white" }}>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>Total Balance</p>
-        <b style={{ fontSize: 38, display: "block", margin: "6px 0 2px" }}>₹{safeNum(balance, 250)}</b>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>🪙 {safeNum(coins, 25)} PURPY Coins • 1 Coin = ₹1 • Can be used in Orders</p>
-        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button onClick={() => setShowAdd(true)} style={{ flex: 1, background: "white", color: "#16a34a", border: "none", padding: "11px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>+ Add Money</button>
-          <button onClick={() => purpyGo("/?view=items")} style={{ flex: 1, background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid white", padding: "11px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>🛒 Shop Now</button>
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 16 }}>
+      <h2 style={{ margin: "0 0 4px" }}>💰 My Wallet</h2>
+      <p style={{ fontSize: 12, color: "#666", margin: "0 0 12px" }}>PURPY Wallet • Kakinada • Safe & Secure</p>
+
+      {/* BALANCE CARD */}
+      <div style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: 16, padding: 20, color: "white" }}>
+        <div style={{ fontSize: 12, opacity: 0.9 }}>Total Balance</div>
+        <div style={{ fontSize: 32, fontWeight: 900, margin: "4px 0" }}>₹{balance}</div>
+        <div style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", display: "inline-block", padding: "2px 8px", borderRadius: 10 }}>
+          💰 {balance} PURPY Coins • 1 Coin = ₹1 • Can be used in Orders
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button onClick={() => setShowAdd(!showAdd)} style={{ flex: 1, background: "white", color: "#16a34a", border: "none", padding: "10px", borderRadius: 10, fontWeight: 800, cursor: "pointer" }}>
+            + Add Money
+          </button>
+          <button onClick={() => purpyGo("/?view=home")} style={{ flex: 1, background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid white", padding: "10px", borderRadius: 10, fontWeight: 800, cursor: "pointer" }}>
+            Shop Now
+          </button>
         </div>
       </div>
-      {showAdd && (
-        <div style={{ background: "white", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14, marginTop: 12 }}>
-          <b style={{ fontSize: 14 }}>Add Money - UPI / Card</b>
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            {[100, 200, 500, 1000].map((a) => (<button key={a} onClick={() => setAmount(String(a))} style={{ flex: 1, padding: "8px", borderRadius: 10, border: String(amount) === String(a) ? "2px solid #16a34a" : "1px solid #ddd", background: String(amount) === String(a) ? "#f0fdf4" : "white", fontWeight: 800, cursor: "pointer" }}>₹{a}</button>))}
-          </div>
-          <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="Custom Amount - Ex: 500" style={{ width: "100%", marginTop: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => addMoney(amount)} style={{ flex: 1, background: "#16a34a", color: "white", border: "none", padding: "11px", borderRadius: 10, fontWeight: 900, cursor: "pointer" }}>Add ₹{safeNum(amount, 0) || 0} - Pay</button>
-            <button onClick={() => { setShowAdd(false); setAmount(""); }} style={{ padding: "11px 16px", background: "#f3f4f6", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>Cancel</button>
-          </div>
-          <p style={{ margin: "8px 0 0", fontSize: 11, color: "#666" }}>🔒 Safe - UPI / Card / NetBanking - Instant credit • Min ₹10</p>
+
+      {/* ADD MONEY SECTION - NUVVU SCREENSHOT LO CHUPINCHINA SECTION */}
+      <div style={{ background: "white", border: "1px solid #eee", borderRadius: 16, padding: 16, marginTop: 12, display: showAdd ? "block" : "block" }}>
+        <b style={{ fontSize: 13 }}>Add Money - UPI / Card</b>
+        
+        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          {quickAmounts.map(a => (
+            <button
+              key={a}
+              onClick={() => { setAddAmount(a); setCustom(""); }}
+              style={{
+                padding: "8px 16px", borderRadius: 20, border: addAmount === a && custom === "" ? "2px solid #16a34a" : "1px solid #ddd",
+                background: addAmount === a && custom === "" ? "#f0fdf4" : "white",
+                fontWeight: 700, cursor: "pointer", fontSize: 12
+              }}
+            >
+              ₹{a}
+            </button>
+          ))}
         </div>
-      )}
-      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14, marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, textAlign: "center" }}>
-        <div><div style={{ fontSize: 22 }}>🪙</div><b style={{ fontSize: 11 }}>Earn Coins</b><p style={{ margin: 0, fontSize: 10, color: "#666" }}>Every Order - 5%</p></div>
-        <div><div style={{ fontSize: 22 }}>💸</div><b style={{ fontSize: 11 }}>Use Wallet</b><p style={{ margin: 0, fontSize: 10, color: "#666" }}>Use in Checkout</p></div>
-        <div><div style={{ fontSize: 22 }}>↩️</div><b style={{ fontSize: 11 }}>Refund</b><p style={{ margin: 0, fontSize: 10, color: "#666" }}>Instant to Wallet</p></div>
+
+        <input
+          type="number"
+          placeholder="Custom Amount - Ex: 500"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", marginTop: 10, fontSize: 13, boxSizing: "border-box" }}
+        />
+
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button
+            onClick={handleAddMoney}
+            style={{ flex: 1, background: "#16a34a", color: "white", border: "none", padding: "12px", borderRadius: 10, fontWeight: 900, cursor: "pointer" }}
+          >
+            Add ₹{custom !== "" ? (safeNum(custom, 0) || 0) : addAmount} - Pay
+          </button>
+          <button onClick={() => { setShowAdd(false); setCustom(""); }} style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #ddd", background: "white", fontWeight: 700, cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
+
+        <div style={{ fontSize: 10, color: "#888", marginTop: 8 }}>
+          🔒 Safe - UPI / Card / NetBanking - Instant credit - Min ₹10
+        </div>
       </div>
-      <h3 style={{ margin: "20px 0 10px", fontSize: 16, fontWeight: 900 }}>📋 Transactions</h3>
-      <div style={{ background: "white", border: "1px solid #eee", borderRadius: 14, overflow: "hidden" }}>
-        {allTxns.map((t, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: i < allTxns.length - 1 ? "1px solid #f3f4f6" : "none" }}><div><b style={{ fontSize: 13, display: "block" }}>{t.title}</b><span style={{ fontSize: 11, color: "#888" }}>{t.time}</span></div><b style={{ fontSize: 14, color: t.type === "credit" ? "#16a34a" : "#dc2626" }}>{t.amt}</b></div>))}
+
+      {/* INFO */}
+      <div style={{ display: "flex", justifyContent: "space-around", marginTop: 20, textAlign: "center", fontSize: 11, color: "#666" }}>
+        <div><div style={{ fontSize: 18 }}>🪙</div><b>Earn Coins</b><br/>Every Order - 5%</div>
+        <div><div style={{ fontSize: 18 }}>💳</div><b>Use Wallet</b><br/>Use in Checkout</div>
+        <div><div style={{ fontSize: 18 }}>↩️</div><b>Refund</b><br/>Instant to Wallet</div>
       </div>
-      <button onClick={() => purpyGo("/?view=home")} style={{ marginTop: 14, width: "100%", background: "#111", color: "white", border: "none", padding: "12px", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>← Back to Home</button>
+
+      <button onClick={() => purpyGo("/?view=home")} style={{ width: "100%", marginTop: 20, padding: 12, background: "#111", color: "white", border: "none", borderRadius: 12, fontWeight: 800, cursor: "pointer" }}>
+        ← Back to Home - Balance ₹{balance}
+      </button>
     </div>
   );
 }

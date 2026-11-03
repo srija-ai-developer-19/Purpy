@@ -4,18 +4,66 @@ import { purpyGo } from "../App.jsx";
 export default function Orders() {
   const [orders, setOrders] = useState(() => {
     try {
-      const o = JSON.parse(localStorage.getItem("purpyOrders") || "[]");
+      const userRaw = localStorage.getItem("purpyUser");
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      
+      // LOGIN AVVALEDU ANTE NO ORDERS
+      if (!user || !user.phone) {
+        return [];
+      }
+
+      const userKey = `purpyOrders_${user.phone}`;
+      let o = JSON.parse(localStorage.getItem(userKey) || "[]");
+      
+      // Old data unte migrate cheyyi
+      if (o.length === 0) {
+        const old = JSON.parse(localStorage.getItem("purpyOrders") || "[]");
+        if (old.length > 0) {
+          localStorage.setItem(userKey, JSON.stringify(old));
+          o = old;
+        }
+      }
       return Array.isArray(o) ? o : [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      return []; 
+    }
   });
+
   const [openId, setOpenId] = useState(null);
+
+  const saveOrders = (updated) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
+      if (!user || !user.phone) return;
+      const userKey = `purpyOrders_${user.phone}`;
+      localStorage.setItem(userKey, JSON.stringify(updated));
+      localStorage.setItem("purpyOrders", JSON.stringify(updated)); // backup
+      setOrders(updated);
+    } catch {}
+  };
 
   const cancelOrder = (id) => {
     if (!confirm("Ee Order - Cancel - Cheyala?")) return;
     const updated = orders.map(o => o.id === id ? { ...o, status: "Cancelled" } : o);
-    setOrders(updated);
-    localStorage.setItem("purpyOrders", JSON.stringify(updated));
+    saveOrders(updated);
   };
+
+  // LOGIN CHECK - LOGOUT AYTHE LOGIN PAGE KI
+  const userExists = (() => {
+    try { const u = JSON.parse(localStorage.getItem("purpyUser") || "null"); return !!(u && u.phone); } catch { return false; }
+  })();
+
+  if (!userExists) {
+    return (
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 50 }}>🔒</div>
+        <h2>Please Login</h2>
+        <p style={{ color: "#666", fontSize: 13 }}>Orders chudali ante login avvali</p>
+        <button onClick={() => purpyGo("/?view=account")} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: 800, marginRight: 10 }}>Login</button>
+        <button onClick={() => purpyGo("/?view=home")} style={{ padding: "10px 20px", background: "white", border: "1px solid #ddd", borderRadius: 20, cursor: "pointer", fontWeight: 800 }}>Home</button>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
@@ -45,7 +93,6 @@ export default function Orders() {
 
         return (
           <div key={o.id} style={{ background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-            {/* Top Row - Click Cheste Expand */}
             <div onClick={() => setOpenId(isOpen ? null : o.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer" }}>
               <div>
                 <b style={{ fontSize: 13 }}>Order {o.id}</b>
@@ -58,7 +105,6 @@ export default function Orders() {
               </div>
             </div>
 
-            {/* ✅ Details - Akkade Open Avthundhi - Vera Page Ki Velladhu */}
             {isOpen && (
               <div style={{ borderTop: "1px dashed #ddd", marginTop: 12, paddingTop: 12 }}>
                 <b style={{ fontSize: 13 }}>🛒 Items:</b>

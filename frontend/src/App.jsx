@@ -42,6 +42,7 @@ export default function App() {
     try { sessionStorage.setItem("purpySplashShown", "yes"); } catch (e) {}
     setShowSplash(false);
   };
+
   useEffect(() => {
     const onNav = () => setTick((t) => t + 1);
     window.addEventListener("popstate", onNav);
@@ -49,9 +50,7 @@ export default function App() {
     return () => { window.removeEventListener("popstate", onNav); window.removeEventListener("purpy-navigate", onNav); };
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [urlKey]);
-
   const isAuthPage = view === "signup" || view === "login";
-
   return (
     <LanguageProvider>
       {showSplash && <SplashScreen onDone={hideSplash} />}
@@ -73,9 +72,7 @@ export default function App() {
           {view === "account" && <Account />}
           {view === "signup" && <Signup />}
           {view === "login" && <Login />}
-          {!["home", "category", "items", "cart", "wishlist", "search", "product", "checkout", "orders", "settings", "wallet", "account", "signup", "login"].includes(view) && <Home />}
         </main>
-        {/* ✅ FIX - Ikkade Thappu Undhi - false -> true chesa */}
         <Footer onOpenAI={() => setAiOpen(true)} />
         <AIHelpDesk open={aiOpen} onClose={() => setAiOpen(false)} />
       </div>

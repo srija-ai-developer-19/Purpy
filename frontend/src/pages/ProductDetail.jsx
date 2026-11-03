@@ -3,107 +3,186 @@ import { purpyGo } from "../App.jsx";
 
 export default function ProductDetail() {
   const [product, setProduct] = useState(null);
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState(0); // ZERO NUNDI START
+
   useEffect(() => {
+    setQty(0); // Image open cheste zero ne
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     let found = null;
     try {
       const sel = JSON.parse(localStorage.getItem("purpySelectedProduct") || "null");
-      if (sel && String(sel.id) === String(id)) found = sel;
-    } catch (e) {}
+      if (sel) found = sel;
+    } catch {}
     if (!found) {
-      try { const all = JSON.parse(localStorage.getItem("purpyProducts") || "[]"); found = all.find((p) => String(p.id) === String(id)); } catch (e) {}
+      try {
+        const last = JSON.parse(localStorage.getItem("purpyLastItems") || "[]");
+        found = last.find((p) => String(p.id) === String(id)) || last[0];
+      } catch {}
     }
     if (!found) {
-      try { const last = JSON.parse(localStorage.getItem("purpyLastItems") || "[]"); found = last.find((p) => String(p.id) === String(id)); } catch (e) {}
+      found = { 
+        id: id || Date.now(), 
+        name: "Cuff Bangles", 
+        price: 499, 
+        oldPrice: 699, 
+        img: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&q=80" 
+      };
     }
-    const demos = {
-      "1": { id: 1, name: "Fresh Tomatoes 1kg", price: 24, oldPrice: 49, off: "51% OFF", img: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=800&q=80", desc: "Fresh - Daily - From Kakinada Farm - 10 Mins Delivery", cat: "Grocery" },
-      "2": { id: 2, name: "Fresh Milk 1L", price: 54, oldPrice: 64, off: "15% OFF", img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=800&q=80", desc: "Pure Cow Milk - Daily Fresh - Chilled - 10 Mins Delivery", cat: "Grocery" },
-      "3": { id: 3, name: "Basmati Rice 5kg", price: 449, oldPrice: 699, off: "36% OFF", img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800&q=80", desc: "Premium Basmati - Long Grain - Best Quality - Kakinada", cat: "Grocery" },
-      "4": { id: 4, name: "Fresh Vegetables Combo", price: 99, oldPrice: 199, off: "50% OFF", img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80", desc: "Combo - Tomato, Onion, Potato, Brinjal - Fresh Daily", cat: "Grocery" },
-    };
-    if (found) {
-      const img = found.img || found.image || found.imageUrl || "";
-      setProduct({ ...found, img, image: img, oldPrice: found.oldPrice || found.mrp || (found.price + 50), desc: found.desc || found.description || "Fresh - Best Quality - Kakinada - 10 Mins Delivery", cat: found.cat || found.category || "Grocery", off: found.off || (found.mrp ? Math.round((1 - found.price / found.mrp) * 100) + "% OFF" : "") });
-    } else if (demos[String(id)]) setProduct(demos[String(id)]);
-    else {
-      setProduct({ id: id || "not-found", name: "Product Not Found", price: 0, oldPrice: 0, off: "", img: "", desc: "Ee product dorakaledhu. Back velli malli try cheyyandi.", cat: "Grocery", notFound: true });
-    }
+    if (found && !found.img && found.image) found.img = found.image;
+    setProduct(found);
   }, []);
-  const addToCartOnly = () => {
-    if (!product || product.notFound) return;
-    const cart = JSON.parse(localStorage.getItem("purpyCart") || "[]");
-    const ex = cart.find((p) => String(p.id) === String(product.id));
-    if (ex) ex.quantity = (ex.quantity || 1) + qty; else cart.push({ ...product, quantity: qty });
-    localStorage.setItem("purpyCart", JSON.stringify(cart));
-    return cart;
+
+  // PLUS - ADD AVVALI
+  const handlePlus = () => {
+    setQty((prev) => prev + 1);
   };
-  const addToCart = () => {
-    addToCartOnly();
-    alert(`✅ ${product.name} - Added to Cart!`);
+
+  // MINUS - TAGGALI - ZERO KINDAKI RADU
+  const handleMinus = () => {
+    setQty((prev) => Math.max(0, prev - 1));
+  };
+
+  const addToCartAndGo = () => {
+    if (qty === 0) {
+      alert("Please add quantity first - Click + button");
+      return;
+    }
+    if (!product) return;
+    try {
+      const user = JSON.parse(localStorage.getItem("purpyUser") || "null");
+      const cartKey = user?.phone ? `purpyCart_${user.phone}` : "purpyCart";
+      let cart = JSON.parse(localStorage.getItem(cartKey) || localStorage.getItem("purpyCart") || "[]");
+      if (!Array.isArray(cart)) cart = [];
+      
+      const idx = cart.findIndex((p) => p.name === product.name);
+      if (idx >= 0) {
+        cart[idx].quantity = (cart[idx].quantity || 0) + qty;
+      } else {
+        cart.push({ 
+          id: product.id || Date.now(), 
+          name: product.name, 
+          price: Number(product.price), 
+          img: product.img || "", 
+          quantity: qty 
+        });
+      }
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      localStorage.setItem("purpyCart", JSON.stringify(cart));
+    } catch {}
     purpyGo("/?view=cart");
   };
-  const buyNow = () => {
-    if (!product || product.notFound) return;
-    addToCartOnly();
-    purpyGo("/?view=checkout");
-  };
-  if (!product) return <div style={{ padding: 40, textAlign: "center" }}>Loading Product...</div>;
-  if (product.notFound) return <div style={{ padding: 40, textAlign: "center" }}><h2>⚠️ Product Not Found</h2><p>{product.desc}</p><button onClick={() => purpyGo("/?view=home")} style={{ padding: "10px 20px", background: "#111", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>Back to Home</button></div>;
-  
-  // ✅ FIX - No hardcoded Srija - Account lo unte ne chupistundi
-  let user = null;
-  try { user = JSON.parse(localStorage.getItem("purpyUser") || "null"); } catch (e) {}
-  const hasUser = user && (user.name || user.phone || user.address);
+
+  if (!product) return <div style={{ padding: 40, textAlign: "center" }}>Loading...</div>;
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "14px 12px 30px" }}>
-      <span onClick={() => purpyGo("/?view=home")} style={{ cursor: "pointer", fontSize: 13, color: "#16a34a", fontWeight: 700 }}>← Back to Home</span>
-      <div style={{ marginTop: 12, borderRadius: 16, overflow: "hidden", height: 340, background: "#f3f4f6" }}><img src={product.img} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
-      <div style={{ marginTop: 14 }}>
-        <span style={{ fontSize: 11, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 12, fontWeight: 700 }}>{product.cat}</span>
-        {product.off && <span style={{ fontSize: 11, background: "#dc2626", color: "white", padding: "4px 10px", borderRadius: 12, fontWeight: 800, marginLeft: 8 }}>{product.off}</span>}
-        <h1 style={{ margin: "10px 0 4px", fontSize: 22, fontWeight: 900 }}>{product.name}</h1>
-        <div><b style={{ fontSize: 24, color: "#16a34a" }}>₹{product.price}</b> <s style={{ color: "#999", marginLeft: 6 }}>₹{product.oldPrice}</s> <span style={{ color: "#16a34a", fontSize: 12, fontWeight: 700 }}>You Save ₹{product.oldPrice - product.price}</span></div>
-        <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6, marginTop: 10 }}>{product.desc}</p>
-        <div style={{ display: "flex", gap: 8, marginTop: 12, fontSize: 12, fontWeight: 700, flexWrap: "wrap" }}>
-          <span style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 10px", borderRadius: 12 }}>⚡ 10 Mins Delivery</span>
-          <span style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 10px", borderRadius: 12 }}>🚚 Free Delivery ₹499+</span>
-          <span style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 10px", borderRadius: 12 }}>↩️ 7 Days Return</span>
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "14px 12px 120px" }}>
+      <span onClick={() => purpyGo("/?view=home")} style={{ cursor: "pointer", color: "#16a34a", fontWeight: 700, fontSize: 14 }}>← Back to Home</span>
+      
+      <div style={{ position: "relative", marginTop: 12 }}>
+        <div style={{ borderRadius: 16, overflow: "hidden", height: 380, background: "#f3f4f6", border: "1px solid #eee" }}>
+          <img src={product.img} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-          <b>Qty:</b>
-          <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #ddd", background: "white", fontSize: 18, cursor: "pointer" }}>-</button>
-          <b style={{ fontSize: 16 }}>{qty}</b>
-          <button onClick={() => setQty(qty + 1)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #ddd", background: "white", fontSize: 18, cursor: "pointer" }}>+</button>
-          <b style={{ marginLeft: 8 }}>Total: ₹{product.price * qty}</b>
+        <div style={{ 
+          position: "absolute", top: 12, right: 12, 
+          background: qty === 0 ? "#ef4444" : "#16a34a", 
+          color: "white", padding: "6px 14px", borderRadius: 20, fontWeight: 800, fontSize: 13 
+        }}>
+          Qty: {qty}
         </div>
-        
-        {/* ✅ FIX - Delivery Details - Account lo unte chupistu, lekapothe login cheyamani */}
-        {hasUser ? (
-          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14, marginTop: 16 }}>
-            <b style={{ fontSize: 14 }}>👤 Delivery Details - Customer</b>
-            <div style={{ fontSize: 13, lineHeight: 1.7, marginTop: 6, color: "#333" }}>
-              {user.name && <div>👤 <b>Name:</b> {user.name}</div>}
-              {user.phone && <div>📞 <b>Phone:</b> {user.phone}</div>}
-              {user.address && <div>📍 <b>Address:</b> {user.address}</div>}
-            </div>
-            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#666" }}>To change address, go to Account &gt; Edit Details</p>
-          </div>
-        ) : (
-          <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 14, padding: 14, marginTop: 16, textAlign:"center" }}>
-            <b style={{ fontSize: 14 }}>📦 Delivery Details</b>
-            <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>Login chesi Account lo address add cheyyandi</p>
-            <button onClick={() => purpyGo("/?view=account")} style={{ marginTop: 8, background: "#111", color: "white", border: "none", padding: "8px 16px", borderRadius: 20, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Go to Account →</button>
-          </div>
-        )}
+      </div>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button onClick={addToCart} style={{ flex: 1, background: "#16a34a", color: "white", border: "none", padding: "13px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>🛒 Add to Cart - ₹{product.price * qty}</button>
-          <button onClick={buyNow} style={{ flex: 1, background: "#111", color: "white", border: "none", padding: "13px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }}>Buy Now →</button>
-        </div>
+      <h1 style={{ margin: "12px 0 4px", fontSize: 22, fontWeight: 900 }}>{product.name}</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <b style={{ fontSize: 24, color: "#16a34a" }}>₹{product.price}</b>
+        <s style={{ color: "#999", fontSize: 14 }}>₹{product.oldPrice || 699}</s>
+      </div>
+
+      {/* QTY CONTROLS - ZERO LOGIC */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
+        <b style={{ fontSize: 14 }}>Qty:</b>
+        <button 
+          onClick={handleMinus} 
+          style={{ 
+            width: 38, height: 38, borderRadius: "50%", border: "1px solid #ddd", 
+            background: qty === 0 ? "#f3f4f6" : "white", 
+            cursor: "pointer", fontSize: 20, fontWeight: 800,
+            opacity: qty === 0 ? 0.5 : 1
+          }}
+        >
+          -
+        </button>
+        <b style={{ 
+          fontSize: 20, minWidth: 30, textAlign: "center",
+          color: qty === 0 ? "#ef4444" : "#111",
+          background: qty === 0 ? "#fef2f2" : "#f0fdf4",
+          padding: "2px 10px", borderRadius: 8
+        }}>
+          {qty}
+        </b>
+        <button 
+          onClick={handlePlus} 
+          style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid #16a34a", background: "#16a34a", color: "white", cursor: "pointer", fontSize: 20, fontWeight: 800 }}
+        >
+          +
+        </button>
+        <span style={{ fontSize: 11, color: "#666", marginLeft: 6 }}>
+          {qty === 0 ? "Click + to add" : `${qty} item${qty > 1 ? 's' : ''} selected`}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        <button 
+          onClick={addToCartAndGo} 
+          disabled={qty === 0}
+          style={{ 
+            flex: 1, 
+            background: qty === 0 ? "#9ca3af" : "#16a34a", 
+            color: "white", border: "none", padding: "14px", borderRadius: 12, 
+            fontWeight: 900, cursor: qty === 0 ? "not-allowed" : "pointer", fontSize: 14 
+          }}
+        >
+          {qty === 0 ? "Add Qty First" : `🛒 Add to Cart - ${qty}`}
+        </button>
+        <button 
+          onClick={addToCartAndGo} 
+          disabled={qty === 0}
+          style={{ 
+            flex: 1, 
+            background: qty === 0 ? "#e5e7eb" : "#111", 
+            color: qty === 0 ? "#9ca3af" : "white", 
+            border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, 
+            cursor: qty === 0 ? "not-allowed" : "pointer", fontSize: 14 
+          }}
+        >
+          Buy Now
+        </button>
+      </div>
+
+      {/* ENGLISH TEXT - BUTTON OR LINK */}
+      <div style={{ textAlign: "center", marginTop: 16, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "12px 10px" }}>
+        <span style={{ fontSize: 13, color: "#333", lineHeight: 1.5 }}>
+          {qty === 0 ? "Quantity is zero - Please click + to add quantity. " : ""}
+          Either press the <b>Add to Cart button</b> or{" "}
+          <span 
+            onClick={() => qty > 0 && purpyGo("/?view=cart")} 
+            style={{ 
+              color: qty === 0 ? "#9ca3af" : "#2563eb", 
+              textDecoration: "underline", 
+              cursor: qty === 0 ? "not-allowed" : "pointer", 
+              fontWeight: 700 
+            }}
+          >
+            please click here to see the cart
+          </span>
+          {" "}— both will take you to the cart 🛒
+        </span>
+      </div>
+
+      <div style={{ marginTop: 18, display: "flex", gap: 12, fontSize: 11, color: "#666", justifyContent: "center" }}>
+        <span>🚚 Free Delivery ₹499+</span>
+        <span>📦 7 Days Return</span>
+        <span>🔒 Secure</span>
       </div>
     </div>
   );

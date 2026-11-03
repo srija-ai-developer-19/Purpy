@@ -30,31 +30,44 @@ export default function Header({ onOpenAI }) {
 
   const displayName = user ? user.name.split(" ")[0] : "";
 
-  // WALLET - LOGIN AYITHE NE 350 - LEKAPOTHE 0
+  // WALLET - LOGIN LEKAPOTHE 0 - LOGIN AYITHE 350 - FIXED
   let displayWallet = 0;
   if (user) {
     try {
-      const w1 = localStorage.getItem("purpyWallet");
-      if (w1 !== null) displayWallet = safeNum(w1, 0);
+      // Priority: phone specific > general > user object
+      let found = null;
       
       if (user?.phone) {
         const w2 = localStorage.getItem(`purpyWallet_${user.phone}`);
-        if (w2 !== null) displayWallet = safeNum(w2, displayWallet);
+        if (w2 !== null && w2 !== "" && w2 !== "0") {
+          found = safeNum(w2, null);
+        }
       }
       
-      if (user.wallet !== undefined) {
-        displayWallet = safeNum(user.wallet, displayWallet);
+      if (found === null) {
+        const w1 = localStorage.getItem("purpyWallet");
+        if (w1 !== null && w1 !== "" && w1 !== "0") {
+          found = safeNum(w1, null);
+        }
+      }
+      
+      if (found === null && user.wallet !== undefined && user.wallet !== 0) {
+        found = safeNum(user.wallet, null);
       }
 
-      // First login - welcome bonus 350
-      if (displayWallet === 0) {
+      // First time login - 350 bonus
+      if (found === null || found === 0) {
         displayWallet = 350;
         localStorage.setItem("purpyWallet", "350");
         if (user.phone) localStorage.setItem(`purpyWallet_${user.phone}`, "350");
         user.wallet = 350;
         localStorage.setItem("purpyUser", JSON.stringify(user));
+      } else {
+        displayWallet = found;
       }
-    } catch {}
+    } catch {
+      displayWallet = 350;
+    }
   }
 
   const finalWallet = user ? displayWallet : 0;

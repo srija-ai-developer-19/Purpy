@@ -1,5 +1,5 @@
 import { purpyGo } from "../App.jsx";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function safeNum(v, def) {
   const n = Number(v);
@@ -15,17 +15,54 @@ export default function Wallet() {
       const user = JSON.parse(rawUser);
       if (!user || !user.phone) return 0;
 
+      let found = null;
+      
       const ub = localStorage.getItem(`purpyWallet_${user.phone}`);
-      if (ub !== null) return safeNum(ub, 0);
-
-      const w = localStorage.getItem("purpyWallet");
-      if (w !== null) return safeNum(w, 0);
-
-      return 350; // First login
+      if (ub !== null && ub !== "" && ub !== "0") {
+        found = safeNum(ub, null);
+      }
+      
+      if (found === null) {
+        const w = localStorage.getItem("purpyWallet");
+        if (w !== null && w !== "" && w !== "0") {
+          found = safeNum(w, null);
+        }
+      }
+      
+      if (found === null) {
+        // First time - 350 set cheyyi
+        localStorage.setItem("purpyWallet", "350");
+        localStorage.setItem(`purpyWallet_${user.phone}`, "350");
+        try {
+          user.wallet = 350;
+          localStorage.setItem("purpyUser", JSON.stringify(user));
+        } catch {}
+        return 350;
+      }
+      
+      return found;
     } catch {
       return 0;
     }
   });
+
+  // SYNC - Header kosam
+  useEffect(() => {
+    try {
+      const rawUser = localStorage.getItem("purpyUser");
+      if (!rawUser) return;
+      const user = JSON.parse(rawUser);
+      if (!user?.phone) return;
+      
+      if (balance === 0) {
+        setBalance(350);
+        localStorage.setItem("purpyWallet", "350");
+        localStorage.setItem(`purpyWallet_${user.phone}`, "350");
+        user.wallet = 350;
+        localStorage.setItem("purpyUser", JSON.stringify(user));
+      }
+    } catch {}
+  }, [balance]);
 
   const rawUser = localStorage.getItem("purpyUser");
   const isLoggedIn = !!rawUser;

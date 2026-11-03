@@ -37,7 +37,17 @@ export default function Signup() {
     }
     setLoading(true);
     setError("");
-    const user = { name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), wallet: 1250, goldCoins: 320, address: "Main Road, Kakinada, Andhra Pradesh - 533001" };
+    
+    // SIGNUP - 350 BONUS - FIXED
+    const user = { 
+      name: name.trim(), 
+      email: email.trim().toLowerCase(), 
+      phone: phone.trim(), 
+      wallet: 350, 
+      goldCoins: 320, 
+      address: "Main Road, Kakinada, Andhra Pradesh - 533001" 
+    };
+    
     try {
       await fetch(`${API_URL}/auth/signup`, {
         method: "POST",
@@ -45,22 +55,45 @@ export default function Signup() {
         body: JSON.stringify({ name: user.name, email: user.email, phone: user.phone, password }),
       }).catch(() => {});
     } catch (err) {}
+    
     try {
       localStorage.setItem("purpyUser", JSON.stringify(user));
       localStorage.setItem("purpyLoggedIn", "yes");
+      // WALLET 350 - 3 KEYS SAME
+      localStorage.setItem("purpyWallet", "350");
+      localStorage.setItem(`purpyWallet_${user.phone}`, "350");
+      localStorage.setItem("purpyGoldCoins", "320");
+      localStorage.setItem(`purpyGoldCoins_${user.phone}`, "320");
+      
       const list = JSON.parse(localStorage.getItem("purpyAccounts") || "[]");
       if (!list.some((a) => String(a.phone).replace(/[^0-9]/g, "").slice(-10) === phone.replace(/[^0-9]/g, "").slice(-10))) {
         list.push(user);
         localStorage.setItem("purpyAccounts", JSON.stringify(list));
       }
     } catch (err) {}
+    
     setLoading(false);
     setSuccess(true);
   };
 
-  const goHome = () => { setSuccess(false); purpyGo("/?view=home"); };
+  const goHome = () => { 
+    try {
+      const raw = localStorage.getItem("purpyUser");
+      if (raw) {
+        const u = JSON.parse(raw);
+        u.wallet = 350;
+        u.goldCoins = 320;
+        localStorage.setItem("purpyUser", JSON.stringify(u));
+        localStorage.setItem("purpyWallet", "350");
+        localStorage.setItem(`purpyWallet_${u.phone}`, "350");
+        localStorage.setItem("purpyGoldCoins", "320");
+      }
+    } catch {}
+    setSuccess(false); 
+    purpyGo("/?view=home"); 
+    setTimeout(() => window.location.reload(), 100);
+  };
 
-  // ✅ LOGOUT FUNCTION - IKKADA UNDHI
   const handleLogout = () => {
     if (!window.confirm("Logout?")) return;
     try {
@@ -71,13 +104,14 @@ export default function Signup() {
       localStorage.removeItem("purpyToken");
       localStorage.removeItem("token");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("purpyWallet");
+      localStorage.removeItem("purpyGoldCoins");
     } catch (e) {}
     setAlreadyUser(null);
     alert("Logged Out!");
     window.location.reload();
   };
 
-  // ✅ 1 - ALREADY LOGGED IN SCREEN - LOGOUT UNDHI
   if (alreadyUser) {
     return (
       <div style={{ maxWidth: 420, margin: "20px auto", padding: "0 16px 30px" }}>
@@ -95,13 +129,11 @@ export default function Signup() {
           <button onClick={() => purpyGo("/?view=account")} style={{ marginTop: 18, width: "100%", background: "#16a34a", color: "white", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>Go to My Account</button>
           <button onClick={() => purpyGo("/?view=home")} style={{ marginTop: 10, width: "100%", background: "#111", color: "white", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>Continue Shopping</button>
           <button onClick={handleLogout} style={{ marginTop: 10, width: "100%", background: "#dc2626", color: "white", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>Log Out</button>
-          <p style={{ fontSize: 12, color: "#999", margin: "12px 0 0" }}>To create a new account, please logout first.</p>
         </div>
       </div>
     );
   }
 
-  // ✅ 2 - SIGNUP FORM - KINDHA KUDA LOGOUT BUTTON PETTA
   return (
     <div style={{ maxWidth: 420, margin: "20px auto", padding: "0 16px 30px" }}>
       <div style={{ background: "white", borderRadius: 20, padding: 24, boxShadow: "0 10px 30px rgba(0,0,0,0.08)", border: "1px solid #eee" }}>
@@ -147,7 +179,7 @@ export default function Signup() {
               Welcome <b style={{ color: "#16a34a" }}>{name}</b>!<br />
               Email: {email}<br />
               Your Account Created.<br />
-              Wallet - Rs.1250 | Coins - 320 Added!
+              Wallet - Rs.350 | Coins - 320 Added!
             </p>
             <button onClick={goHome} style={{ marginTop: 18, width: "100%", background: "#16a34a", color: "white", border: "none", padding: "14px", borderRadius: 12, fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
               OK - Go to Homepage

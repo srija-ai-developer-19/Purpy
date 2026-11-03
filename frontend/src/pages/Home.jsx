@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { purpyGo, API_URL } from "../App.jsx";
 export default function Home() {
-  const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState([]);
   const [slide, setSlide] = useState(0);
   const banners = [
@@ -76,12 +75,11 @@ export default function Home() {
   ];
   const goCat = (k) => purpyGo(`/?view=category&cat=${k}`);
   const goItems = () => purpyGo(`/?view=items`);
-  const copyCode = () => { navigator.clipboard.writeText("PURPY100"); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px 30px" }}>
-      <div style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: 16, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white" }}>
-        <div><b style={{ fontSize: 18 }}>PURPY100 - ₹100 OFF</b><p style={{ margin: "2px 0 0", fontSize: 12, opacity: 0.9 }}>First Order • Above ₹499 • Kakinada</p></div>
-        <button onClick={copyCode} style={{ background: copied ? "#14532d" : "white", color: copied ? "white" : "#16a34a", border: "none", padding: "9px 16px", borderRadius: 20, fontWeight: 900, fontSize: 13, cursor: "pointer", minWidth: 110 }}>{copied ? "✅ Copied!" : "Copy Code"}</button>
+      {/* FIXED BANNER - ONLY PURPY - NO 100 OFF - NO COPY CODE - Free Order Above 499 Kakinada */}
+      <div style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: 16, padding: "14px 16px", display: "flex", justifyContent: "center", alignItems: "center", color: "white" }}>
+        <div style={{ textAlign: "center" }}><b style={{ fontSize: 18, letterSpacing: 0.5 }}>🛒 PURPY. - Free Order Above ₹499 - Kakinada</b></div>
       </div>
       <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, marginTop: 10, padding: "12px 10px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, textAlign: "center" }}>
         <div><div style={{ fontSize: 20 }}>🚚</div><b style={{ fontSize: 11 }}>Free Delivery</b><p style={{ margin: 0, fontSize: 10, color: "#666" }}>Above ₹499</p></div>
@@ -121,7 +119,6 @@ export default function Home() {
         <div><h3 style={{ margin: 0, fontSize: 19, fontWeight: 900 }}>Deals of the Day</h3><p style={{ margin: "2px 0 0", fontSize: 12, color: "#666" }}>Kakinada • Today Only</p></div>
         <span onClick={goItems} style={{ cursor: "pointer", color: "#16a34a", fontWeight: 800, fontSize: 13 }}>View All →</span>
       </div>
-      {/* ✅ FIX - Deals Grid - Mobile lo scroll - Desktop lo 5 columns - No Squeeze */}
       <div className="deals-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginTop: 16 }}>
         {deals.map((d) => (
           <div key={d.id} onClick={() => { localStorage.setItem("purpySelectedProduct", JSON.stringify(d)); purpyGo(`/?view=product&id=${d.id}`); }} style={{ cursor: "pointer", background: "white", borderRadius: 14, overflow: "hidden", border: "1px solid #eee", boxShadow: "0 4px 12px rgba(0,0,0,0.06)", minWidth: 0 }}>

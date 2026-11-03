@@ -12,8 +12,8 @@ export default function Account() {
   const [accounts, setAccounts] = useState([]);
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState(GUEST_USER);
-  const [wallet, setWallet] = useState(250);
-  const [coins, setCoins] = useState(25);
+  const [wallet, setWallet] = useState(0);
+  const [coins, setCoins] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -31,18 +31,57 @@ export default function Account() {
       let list = JSON.parse(localStorage.getItem("purpyAccounts") || "[]");
       setAccounts(list);
       if (u && u.name && u.phone) {
-        const data = { name: u.name || "Srija", phone: u.phone || "", email: u.email || "", address: u.address || "Main Road, Kakinada, Andhra Pradesh - 533001" };
+        const data = { name: u.name || "Srija", phone: u.phone || "", email: u.email || "", address: u.address || "Main Road, Kakinada, Andhra Pradesh - 533001", wallet: u.wallet, goldCoins: u.goldCoins };
         setUser(data); setForm(data);
+        
+        // WALLET FIX - 0 GUEST, 350 LOGIN - DYNAMIC
+        let wAmt = 0;
+        const wPhone = localStorage.getItem(`purpyWallet_${data.phone}`);
+        const wGen = localStorage.getItem("purpyWallet");
+        if (wPhone !== null && wPhone !== "0" && wPhone !== "") wAmt = safeNum(wPhone, 0);
+        else if (wGen !== null && wGen !== "0" && wGen !== "") wAmt = safeNum(wGen, 0);
+        else if (data.wallet) wAmt = safeNum(data.wallet, 0);
+        
+        if (wAmt === 0) {
+          wAmt = 350;
+          localStorage.setItem("purpyWallet", "350");
+          localStorage.setItem(`purpyWallet_${data.phone}`, "350");
+        }
+        setWallet(wAmt);
+        
+        // COINS FIX - DYNAMIC
+        let cAmt = 0;
+        const cPhone = localStorage.getItem(`purpyGoldCoins_${data.phone}`) || localStorage.getItem(`purpyCoins_${data.phone}`) || localStorage.getItem("purpyCoins");
+        const cGen = localStorage.getItem("purpyGoldCoins");
+        if (cPhone) cAmt = safeNum(cPhone, 0);
+        else if (cGen) cAmt = safeNum(cGen, 0);
+        else if (data.goldCoins) cAmt = safeNum(data.goldCoins, 0);
+        else cAmt = 25;
+        setCoins(cAmt);
+        
       } else if (list[0]) {
         setUser(list[0]); setForm(list[0]); localStorage.setItem("purpyUser", JSON.stringify(list[0]));
+        // Same wallet logic for list[0]
+        let wAmt = 0;
+        const wPhone = localStorage.getItem(`purpyWallet_${list[0].phone}`);
+        const wGen = localStorage.getItem("purpyWallet");
+        if (wPhone) wAmt = safeNum(wPhone, 0);
+        else if (wGen) wAmt = safeNum(wGen, 0);
+        else if (list[0].wallet) wAmt = safeNum(list[0].wallet, 0);
+        if (wAmt === 0) wAmt = 350;
+        setWallet(wAmt);
+        setCoins(safeNum(list[0].goldCoins, 25));
       } else {
         setUser(GUEST_USER); setForm(GUEST_USER);
+        setWallet(0); // GUEST = 0 - FIX
+        setCoins(0);  // GUEST = 0 - FIX
       }
-      const w = localStorage.getItem("purpyWallet"); if (w !== null) setWallet(safeNum(w, 250)); else if (u && u.wallet !== undefined) setWallet(safeNum(u.wallet, 250));
-      const c = localStorage.getItem("purpyCoins"); if (c !== null) setCoins(safeNum(c, 25));
       setOrderCount(JSON.parse(localStorage.getItem("purpyOrders") || "[]").length);
       const cart = JSON.parse(localStorage.getItem("purpyCart") || "[]"); setCartCount(cart.reduce((s, p) => s + (p.quantity || 1), 0));
-    } catch (e) {}
+    } catch (e) {
+      setWallet(0);
+      setCoins(0);
+    }
   }, []);
 
   const saveProfile = () => {
@@ -65,10 +104,15 @@ export default function Account() {
       localStorage.removeItem("purpyToken");
       localStorage.removeItem("token");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("purpyWallet");
+      localStorage.removeItem("purpyGoldCoins");
+      localStorage.removeItem("purpyCoins");
     } catch (e) {}
     setAccounts([]);
     setUser(GUEST_USER);
     setForm(GUEST_USER);
+    setWallet(0);
+    setCoins(0);
     setEdit(false);
     setShowAdd(false);
     alert("Logged Out!");
@@ -80,6 +124,9 @@ export default function Account() {
     localStorage.setItem("purpyUser", JSON.stringify(acc));
     localStorage.setItem("purpyToken", acc.token || ("purpy-token-" + normPhone(acc.phone)));
     setUser(acc); setForm(acc);
+    // Update wallet on switch
+    const w = localStorage.getItem(`purpyWallet_${acc.phone}`) || localStorage.getItem("purpyWallet") || acc.wallet || 350;
+    setWallet(safeNum(w, 350));
     alert(`Switched to ${acc.name} - ${acc.phone}`);
     purpyGo(`/?view=account`);
   };
@@ -97,6 +144,7 @@ export default function Account() {
         localStorage.removeItem("purpyUser");
         localStorage.removeItem("purpyToken");
         setUser(GUEST_USER); setForm(GUEST_USER); setEdit(false);
+        setWallet(0); setCoins(0);
       }
     }
     alert("Account Removed");
@@ -110,14 +158,18 @@ export default function Account() {
   };
   const verifyAndAdd = () => {
     if (otp !== "1234") return alert("Wrong OTP - Demo OTP: 1234");
-    const newAcc = { name: newName.trim(), phone: newPhone.trim(), email: "", address: newAddr.trim() || "Main Road, Kakinada, Andhra Pradesh - 533001", token: "purpy-token-" + normPhone(newPhone) + "-" + Date.now(), wallet: 0 };
+    const newAcc = { name: newName.trim(), phone: newPhone.trim(), email: "", address: newAddr.trim() || "Main Road, Kakinada, Andhra Pradesh - 533001", token: "purpy-token-" + normPhone(newPhone) + "-" + Date.now(), wallet: 350 };
     const updated = [...accounts, newAcc];
     localStorage.setItem("purpyAccounts", JSON.stringify(updated));
     localStorage.setItem("purpyUser", JSON.stringify(newAcc));
     localStorage.setItem("purpyToken", newAcc.token);
+    localStorage.setItem("purpyWallet", "350");
+    localStorage.setItem(`purpyWallet_${newAcc.phone}`, "350");
+    localStorage.setItem("purpyGoldCoins", "25");
     setAccounts(updated); setUser(newAcc); setForm(newAcc);
+    setWallet(350); setCoins(25);
     setShowAdd(false); setNewName(""); setNewPhone(""); setNewAddr(""); setOtp(""); setOtpSent(false);
-    alert(`New Account Added!\n${newAcc.name} - ${newAcc.phone}`);
+    alert(`New Account Added!\n${newAcc.name} - ${newAcc.phone} - ₹350 Bonus`);
     purpyGo(`/?view=account`);
   };
 
@@ -193,7 +245,13 @@ export default function Account() {
         )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginTop: 14 }}>
-        <div onClick={() => go("wallet")} style={{ cursor: "pointer", background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, textAlign: "center" }}><div style={{ fontSize: 24 }}>💰</div><b style={{ fontSize: 13, display: "block", marginTop: 4 }}>Wallet</b><span style={{ fontSize: 12, color: "#16a34a", fontWeight: 800 }}>₹{wallet} • {coins} Coins</span></div>
+        <div onClick={() => go("wallet")} style={{ cursor: "pointer", background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 24 }}>💰</div>
+          <b style={{ fontSize: 13, display: "block", marginTop: 4 }}>Wallet</b>
+          <span style={{ fontSize: 12, color: isGuest ? "#999" : "#16a34a", fontWeight: 800 }}>
+            {isGuest ? "₹0 • 0 Coins" : `₹${wallet} • ${coins} Coins`}
+          </span>
+        </div>
         <div onClick={() => go("orders")} style={{ cursor: "pointer", background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, textAlign: "center" }}><div style={{ fontSize: 24 }}>📦</div><b style={{ fontSize: 13, display: "block", marginTop: 4 }}>My Orders</b><span style={{ fontSize: 12, color: "#666" }}>{orderCount} Orders • View</span></div>
         <div onClick={() => go("cart")} style={{ cursor: "pointer", background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, textAlign: "center" }}><div style={{ fontSize: 24 }}>🛒</div><b style={{ fontSize: 13, display: "block", marginTop: 4 }}>My Cart</b><span style={{ fontSize: 12, color: "#666" }}>{cartCount} Items</span></div>
         <div onClick={() => go("settings")} style={{ cursor: "pointer", background: "white", border: "1px solid #eee", borderRadius: 14, padding: 14, textAlign: "center" }}><div style={{ fontSize: 24 }}>⚙️</div><b style={{ fontSize: 13, display: "block", marginTop: 4 }}>Settings</b><span style={{ fontSize: 12, color: "#666" }}>Language • Help</span></div>

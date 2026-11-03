@@ -10,14 +10,11 @@ function safeNum(v, def) {
 export default function Header({ onOpenAI }) {
   const [walletTick, setWalletTick] = useState(0);
 
-  // WALLET UPDATE VINADANIKI - localStorage marithe Header update avvali
   useEffect(() => {
     const onStorage = () => setWalletTick(t => t + 1);
     window.addEventListener("storage", onStorage);
-    // same tab lo kuda update kosam
     const id = setInterval(() => {
-      const w = localStorage.getItem("purpyWallet");
-      if (w !== null) setWalletTick(t => t + 0.0001); // trigger
+      setWalletTick(t => t + 0.0001);
     }, 1000);
     return () => { window.removeEventListener("storage", onStorage); clearInterval(id); }
   }, []);
@@ -33,28 +30,34 @@ export default function Header({ onOpenAI }) {
 
   const displayName = user ? user.name.split(" ")[0] : "";
 
-  // WALLET READ - 3 CHOTLA NUNCHI - EKKADA UNNA 250 TEESUKOVALI
-  let displayWallet = 250; // default 250 - nee case ki
+  // WALLET - LOGIN AYITHE NE 350 - LEKAPOTHE 0
+  let displayWallet = 0;
+  if (user) {
+    try {
+      const w1 = localStorage.getItem("purpyWallet");
+      if (w1 !== null) displayWallet = safeNum(w1, 0);
+      
+      if (user?.phone) {
+        const w2 = localStorage.getItem(`purpyWallet_${user.phone}`);
+        if (w2 !== null) displayWallet = safeNum(w2, displayWallet);
+      }
+      
+      if (user.wallet !== undefined) {
+        displayWallet = safeNum(user.wallet, displayWallet);
+      }
 
-  try {
-    // 1. purpyWallet key (main)
-    const w1 = localStorage.getItem("purpyWallet");
-    if (w1 !== null) displayWallet = safeNum(w1, displayWallet);
-    
-    // 2. user specific wallet
-    if (user?.phone) {
-      const w2 = localStorage.getItem(`purpyWallet_${user.phone}`);
-      if (w2 !== null) displayWallet = safeNum(w2, displayWallet);
-    }
-    
-    // 3. user object lo wallet
-    if (user && user.wallet !== undefined) {
-      displayWallet = safeNum(user.wallet, displayWallet);
-    }
-  } catch {}
+      // First login - welcome bonus 350
+      if (displayWallet === 0) {
+        displayWallet = 350;
+        localStorage.setItem("purpyWallet", "350");
+        if (user.phone) localStorage.setItem(`purpyWallet_${user.phone}`, "350");
+        user.wallet = 350;
+        localStorage.setItem("purpyUser", JSON.stringify(user));
+      }
+    } catch {}
+  }
 
-  // Final wallet - user lekapothe kuda 250 chupinchu - 0 vaddu
-  const finalWallet = user ? displayWallet : (safeNum(localStorage.getItem("purpyWallet"), 250));
+  const finalWallet = user ? displayWallet : 0;
 
   const go = (v) => purpyGo(`/?view=${v}`);
 
@@ -103,7 +106,6 @@ export default function Header({ onOpenAI }) {
         <span onClick={() => go("orders")} style={{ cursor: "pointer", background: "#fef3c7", border: "1px solid #facc15", padding: "4px 10px", borderRadius: 20, fontWeight: 800 }}>📦 Orders {finalOrderCount > 0 && <span style={{ background: "#dc2626", color: "white", fontSize: 9, padding: "1px 5px", borderRadius: 10 }}>{finalOrderCount}</span>}</span>
         <span onClick={() => go("cart")} style={{ cursor: "pointer" }}>🛒 Cart {finalCartCount > 0 && <span style={{ background: "#dc2626", color: "white", fontSize: 9, padding: "1px 5px", borderRadius: 10 }}>{finalCartCount}</span>}</span>
         <span onClick={() => go("wishlist")} style={{ cursor: "pointer" }}>❤️ {finalWishCount > 0 && <span style={{ background: "#dc2626", color: "white", fontSize: 9, padding: "1px 5px", borderRadius: 10 }}>{finalWishCount}</span>}</span>
-        {/* WALLET ICON - IPPUDU 250 CORRECT GA VASTHUNDI */}
         <span onClick={() => go("wallet")} style={{ cursor: "pointer", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: 20, fontWeight: 800, color: "#15803d" }}>💰 ₹{finalWallet}</span>
         <span onClick={() => go("settings")} style={{ cursor: "pointer", background: "#f3f4f6", padding: "4px 10px", borderRadius: 20, fontWeight: 800 }}>⚙️ Settings</span>
         {user ? <span onClick={() => go("account")} style={{ cursor: "pointer", background: "#111", color: "white", padding: "5px 12px", borderRadius: 20, fontWeight: 700 }}>👤 {displayName}</span> : <span onClick={() => go("account")} style={{ cursor: "pointer", background: "#111", color: "white", padding: "5px 12px", borderRadius: 20, fontWeight: 700 }}>👤 Account</span>}

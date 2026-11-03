@@ -159,23 +159,11 @@ export default function ProductDetail() {
         </button>
       </div>
 
-      {/* ENGLISH TEXT - BUTTON OR LINK */}
+      {/* FIXED - LINK TEESI - BUTTON TEXT MATREME */}
       <div style={{ textAlign: "center", marginTop: 16, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "12px 10px" }}>
         <span style={{ fontSize: 13, color: "#333", lineHeight: 1.5 }}>
           {qty === 0 ? "Quantity is zero - Please click + to add quantity. " : ""}
-          Either press the <b>Add to Cart button</b> or{" "}
-          <span 
-            onClick={() => qty > 0 && purpyGo("/?view=cart")} 
-            style={{ 
-              color: qty === 0 ? "#9ca3af" : "#2563eb", 
-              textDecoration: "underline", 
-              cursor: qty === 0 ? "not-allowed" : "pointer", 
-              fontWeight: 700 
-            }}
-          >
-            please click here to see the cart
-          </span>
-          {" "}— both will take you to the cart 🛒
+          Please click the button to see the cart 🛒
         </span>
       </div>
 
